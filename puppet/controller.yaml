@@ -993,6 +993,7 @@ resources:
             - cinder_netapp_data # Optionally provided by ControllerExtraConfigPre
             - neutron_bigswitch_data # Optionally provided by ControllerExtraConfigPre
             - neutron_cisco_data # Optionally provided by ControllerExtraConfigPre
+            - neutron_plumgrid_data # Optionally provided by ControllerExtraConfigPre
             - cisco_n1kv_data # Optionally provided by ControllerExtraConfigPre
           datafiles:
             controller_extraconfig:

@@ -69,14 +69,30 @@ include ::nova::compute::libvirt
 include ::nova::network::neutron
 include ::neutron
 
-class { 'neutron::plugins::ml2':
-  flat_networks        => split(hiera('neutron_flat_networks'), ','),
-  tenant_network_types => [hiera('neutron_tenant_network_type')],
-}
+if 'iovisor' in hiera('neutron_mechanism_drivers') {
+   # forward all ipv4 traffic
+   # this is required for the vms to pass through the gateways public interface
+   sysctl::value { 'net.ipv4.ip_forward': value => '1' }
 
-class { 'neutron::agents::ml2::ovs':
-  bridge_mappings => split(hiera('neutron_bridge_mappings'), ','),
-  tunnel_types    => split(hiera('neutron_tunnel_types'), ','),
+   # ifc_ctl_pp needs to be invoked by root as part of the vif.py when a VM is powered on
+   file { '/etc/sudoers.d/ifc_ctl_sudoers':
+     ensure  => file,
+     owner   => root,
+     group   => root,
+     mode    => '0440',
+     content => "nova ALL=(root) NOPASSWD: /opt/pg/bin/ifc_ctl_pp *\n",
+   }
+
+} else {
+  class { 'neutron::plugins::ml2':
+    flat_networks        => split(hiera('neutron_flat_networks'), ','),
+    tenant_network_types => [hiera('neutron_tenant_network_type')],
+  }
+
+  class { 'neutron::agents::ml2::ovs':
+    bridge_mappings => split(hiera('neutron_bridge_mappings'), ','),
+    tunnel_types    => split(hiera('neutron_tunnel_types'), ','),
+  }
 }
 
 if 'cisco_n1kv' in hiera('neutron_mechanism_drivers') {
@@ -85,6 +101,7 @@ if 'cisco_n1kv' in hiera('neutron_mechanism_drivers') {
     n1kv_version         => hiera('n1kv_vem_version', undef),
   }
 }
+
 
 
 include ::ceilometer

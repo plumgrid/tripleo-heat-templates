@@ -1055,23 +1055,23 @@ if hiera('step') >= 4 {
     # as soon as neutron-server is started; to avoid races we want to make this
     # happen only on one node, before normal Pacemaker initialization
     # https://bugzilla.redhat.com/show_bug.cgi?id=1233061
-    if hiera('neutron::core_plugin') == 'plumgrid' {
-      exec { '/usr/bin/systemctl start neutron-server && /usr/bin/sleep 5' : } ->
-      pacemaker::resource::service { $::neutron::params::server_service:
-        op_params => "start timeout=90",
-        clone_params   => "interleave=true",
-        require => Pacemaker::Resource::Service[$::keystone::params::service_name]
-      }
-      pacemaker::constraint::base { 'keystone-to-neutron-server-constraint':
-        constraint_type => "order",
-        first_resource => "${::keystone::params::service_name}-clone",
-        second_resource => "${::neutron::params::server_service}-clone",
-        first_action => "start",
-        second_action => "start",
-        require => [Pacemaker::Resource::Service[$::keystone::params::service_name],
-                    Pacemaker::Resource::Service[$::neutron::params::server_service]],
-      }
-    } else {
+    
+   pacemaker::resource::service { $::neutron::params::server_service:
+      op_params => "start timeout=90",
+      clone_params   => "interleave=true",
+      require => Pacemaker::Resource::Service[$::keystone::params::service_name]
+    }
+    pacemaker::constraint::base { 'keystone-to-neutron-server-constraint':
+      constraint_type => "order",
+      first_resource => "${::keystone::params::service_name}-clone",
+      second_resource => "${::neutron::params::server_service}-clone",
+      first_action => "start",
+      second_action => "start",
+      require => [Pacemaker::Resource::Service[$::keystone::params::service_name],
+                  Pacemaker::Resource::Service[$::neutron::params::server_service]],
+    }
+
+    if hiera('neutron::core_plugin') != 'plumgrid' {
       exec { '/usr/bin/systemctl start neutron-server && /usr/bin/sleep 5' : } ->
       pacemaker::resource::service { $::neutron::params::server_service:
         op_params => "start timeout=90",

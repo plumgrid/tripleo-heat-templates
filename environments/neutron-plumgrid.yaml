@@ -11,7 +11,5 @@ parameter_defaults:
   PLUMgridUsername: username
   PLUMgridPassword: password
   PLUMgridServerTimeOut: 99
-
- # Optional paramaters for PLUMgrid neutron plugin
- # PLUMgridNovaMetadataIP: 169.254.169.254
- # PLUMgridNovaMetadataPort: 8775
+  PLUMgridNovaMetadataIP: 169.254.169.254
+  PLUMgridNovaMetadataPort: 8775

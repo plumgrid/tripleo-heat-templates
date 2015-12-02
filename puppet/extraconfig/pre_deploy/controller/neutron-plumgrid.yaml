@@ -23,7 +23,7 @@ parameters:
     type: string
     default: password
   PLUMgridServerTimeOut:
-    description: Request timeout duration (seconds) to PLUMgrid paltform
+    description: Request timeout duration (seconds) to PLUMgrid platform
     type: string
     default: 99
   PLUMgridNovaMetadataIP:

@@ -1,0 +1,106 @@
+heat_template_version: 2015-04-30
+
+description: Controller hieradata for Neutron PLUMgrid configuration
+
+parameters:
+  server:
+    description: ID of the controller node to apply this config to
+    type: string
+  PLUMgridDirectorServer:
+    description: IP address of the PLUMgrid Director Server
+    type: string
+    default: 127.0.0.1
+  PLUMgridDirectorServerPort:
+    description: Port of the PLUMgrid Director Server
+    type: string
+    default: 8080
+  PLUMgridUsername:
+    description: Username for PLUMgrid platform
+    type: string
+    default: username
+  PLUMgridPassword:
+    description: Password for PLUMgrid platform
+    type: string
+    default: password
+  PLUMgridServerTimeOut:
+    description: Request timeout duration (seconds) to PLUMgrid platform
+    type: string
+    default: 99
+  PLUMgridNovaMetadataIP:
+    description: IP address of Nova Metadata
+    type: string
+    default: 169.254.169.254
+  PLUMgridNovaMetadataPort:
+    description: Port of Nova Metadata
+    type: string
+    default: 8775
+  PLUMgridRepoURL:
+    description: URL for PLUMgrid Repository
+    type: string
+    default: http://127.0.0.1
+  PLUMgridRepoComponent:
+    description: Repository component for PLUMgrid Repository
+    type: string
+    default: fuji
+  PLUMgridNetwork:
+    description: CIDR of PLUMgrid Network
+    type: string
+    default: 127.0.0.1/24
+  PLUMgridMgmtDev:
+    description: Device for PLUMgrid Management Network
+    type: string
+    default: ''
+  PLUMgridFabricDev:
+    description: Device for PLUMgrid Fabric Network
+    type: string
+    default: ''
+
+resources:
+  ControllerPLUMgridConfig:
+    type: OS::Heat::StructuredConfig
+    properties:
+      group: os-apply-config
+      config:
+        hiera:
+          datafiles:
+            neutron_plumgrid_data:
+              mapped_data:
+                neutron::plugins::plumgrid::director_server: {get_input: plumgrid_director_server}
+                neutron::plugins::plumgrid::director_server_port: {get_input: plumgrid_director_server_port}
+                neutron::plugins::plumgrid::username: {get_input: plumgrid_username}
+                neutron::plugins::plumgrid::password: {get_input: plumgrid_password}
+                neutron::plugins::plumgrid::connection: '"%{hiera(''neutron::server::database_connection'')}"'
+                neutron::plugins::plumgrid::controller_priv_host: '"%{hiera(''keystone_admin_api_vip'')}"'
+                neutron::plugins::plumgrid::admin_password: '"%{hiera(''admin_password'')}"'
+                neutron::plugins::plumgrid::nova_metadata_ip: {get_input: plumgrid_nova_metadata_ip}
+                neutron::plugins::plumgrid::nova_metadata_port: {get_input: plumgrid_nova_metadata_port}
+                neutron::plugins::plumgrid::metadata_proxy_shared_secret: '"%{hiera(''nova::api::neutron_metadata_proxy_shared_secret'')}"'
+                plumgrid_mgmt_dev: {get_input: plumgrid_mgmt_dev}
+                plumgrid_fabric_dev: {get_input: plumgrid_fabric_dev}
+                plumgrid_repo_baseurl: {get_input: plumgrid_repo_url}
+                plumgrid_repo_component: {get_input: plumgrid_repo_component}
+                plumgrid_virtual_ip: {get_input: plumgrid_director_server}
+                plumgrid_network: {get_input: plumgrid_network}
+
+  ControllerPLUMgridDeployment:
+    type: OS::Heat::StructuredDeployment
+    properties:
+      config: {get_resource: ControllerPLUMgridConfig}
+      server: {get_param: server}
+      input_values:
+        plumgrid_director_server: {get_param: PLUMgridDirectorServer}
+        plumgrid_director_server_port: {get_param: PLUMgridDirectorServerPort}
+        plumgrid_username: {get_param: PLUMgridUsername}
+        plumgrid_password: {get_param: PLUMgridPassword}
+        plumgrid_nova_metadata_ip: {get_param: PLUMgridNovaMetadataIP}
+        plumgrid_nova_metadata_port: {get_param: PLUMgridNovaMetadataPort}
+        plumgrid_repo_url: {get_param: PLUMgridRepoURL}
+        plumgrid_repo_component: {get_param: PLUMgridRepoComponent}
+        plumgrid_network: {get_param: PLUMgridNetwork}
+        plumgrid_mgmt_dev: {get_param: PLUMgridMgmtDev}
+        plumgrid_fabric_dev: {get_param: PLUMgridFabricDev}
+
+outputs:
+  deploy_stdout:
+    description: Output of the extra hiera data deployment
+    value: {get_attr: [ControllerPLUMgridDeployment, deploy_stdout]}

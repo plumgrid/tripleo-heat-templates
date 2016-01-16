@@ -1,0 +1,61 @@
+heat_template_version: 2015-04-30
+
+description: Compute hieradata for Neutron PLUMgrid configuration
+
+parameters:
+  server:
+    description: ID of the controller node to apply this config to
+    type: string
+  PLUMgridRepoURL:
+    description: URL for PLUMgrid Repository
+    type: string
+    default: http://127.0.0.1
+  PLUMgridRepoComponent:
+    description: Repository component for PLUMgrid Repository
+    type: string
+    default: fuji
+  PLUMgridNetwork:
+    description: CIDR of PLUMgrid Network
+    type: string
+    default: 127.0.0.1/24
+  PLUMgridMgmtDev:
+    description: Device for PLUMgrid Management Network
+    type: string
+    default: ''
+  PLUMgridFabricDev:
+    description: Device for PLUMgrid Fabric Network
+    type: string
+    default: ''
+
+resources:
+  ComputePLUMgridConfig:
+    type: OS::Heat::StructuredConfig
+    properties:
+      group: os-apply-config
+      config:
+        hiera:
+          datafiles:
+            neutron_plumgrid_data:
+              mapped_data:
+                plumgrid_mgmt_dev: {get_input: plumgrid_mgmt_dev}
+                plumgrid_fabric_dev: {get_input: plumgrid_fabric_dev}
+                plumgrid_repo_baseurl: {get_input: plumgrid_repo_url}
+                plumgrid_repo_component: {get_input: plumgrid_repo_component}
+                plumgrid_network: {get_input: plumgrid_network}
+
+  ComputePLUMgridDeployment:
+    type: OS::Heat::StructuredDeployment
+    properties:
+      config: {get_resource: ComputePLUMgridConfig}
+      server: {get_param: server}
+      input_values:
+        plumgrid_repo_url: {get_param: PLUMgridRepoURL}
+        plumgrid_repo_component: {get_param: PLUMgridRepoComponent}
+        plumgrid_network: {get_param: PLUMgridNetwork}
+        plumgrid_mgmt_dev: {get_param: PLUMgridMgmtDev}
+        plumgrid_fabric_dev: {get_param: PLUMgridFabricDev}
+
+outputs:
+  deploy_stdout:
+    description: Output of the extra hiera data deployment
+    value: {get_attr: [ComputePLUMgridDeployment, deploy_stdout]}

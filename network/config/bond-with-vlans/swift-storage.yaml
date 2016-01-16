@@ -2,7 +2,7 @@ heat_template_version: 2015-04-30
 
 description: >
   Software Config to drive os-net-config with 2 bonded nics on a bridge
-  with VLANs attached for the swift storage role.
+  with a VLANs attached for the swift storage role.
 
 parameters:
   ControlPlaneIp:
@@ -51,12 +51,12 @@ parameters:
     description: The subnet CIDR of the control plane network.
     type: string
   ControlPlaneDefaultRoute: # Override this via parameter_defaults
-    description: The default route of the control plane network.
+    description: The subnet CIDR of the control plane network.
     type: string
   DnsServers: # Override this via parameter_defaults
     default: []
     description: A list of DNS servers (2 max for some implementations) that will be added to resolv.conf.
-    type: comma_delimited_list
+    type: json
   EC2MetadataIp: # Override this via parameter_defaults
     description: The IP address of the EC2 metadata server.
     type: string
@@ -109,22 +109,22 @@ resources:
                   device: bond1
                   vlan_id: {get_param: InternalApiNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: InternalApiIpSubnet}
+                  -
+                    ip_netmask: {get_param: InternalApiIpSubnet}
                 -
                   type: vlan
                   device: bond1
                   vlan_id: {get_param: StorageNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: StorageIpSubnet}
+                  -
+                    ip_netmask: {get_param: StorageIpSubnet}
                 -
                   type: vlan
                   device: bond1
                   vlan_id: {get_param: StorageMgmtNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: StorageMgmtIpSubnet}
+                  -
+                    ip_netmask: {get_param: StorageMgmtIpSubnet}
 
 outputs:
   OS::stack_id:

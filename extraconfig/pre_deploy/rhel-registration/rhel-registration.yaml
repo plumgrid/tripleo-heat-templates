@@ -116,4 +116,3 @@ outputs:
   deploy_stdout:
     description: Deployment reference, used to trigger puppet apply on changes
     value: {get_attr: [RHELRegistrationDeployment, deploy_stdout]}
-

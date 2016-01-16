@@ -2,15 +2,17 @@ heat_template_version: 2015-04-30
 description: 'OpenStack cinder storage post deployment for Puppet'
 
 parameters:
-  ConfigDebug:
-    default: false
-    description: Whether to run config management (e.g. Puppet) in debug mode.
-    type: boolean
   servers:
     type: json
   NodeConfigIdentifiers:
      type: json
      description: Value which changes if the node configuration may need to be re-applied
+  UpdateIdentifier:
+    default: ''
+    type: string
+    description: >
+      Setting to a previously unused value during stack-update will trigger
+      package update on all nodes
 
 resources:
 
@@ -18,8 +20,6 @@ resources:
     type: OS::Heat::SoftwareConfig
     properties:
       group: puppet
-      options:
-        enable_debug: {get_param: ConfigDebug}
       outputs:
       - name: result
       config:
@@ -30,3 +30,10 @@ resources:
     properties:
       servers:  {get_param: servers}
       config: {get_resource: VolumePuppetConfig}
+
+  VolumePostPuppetDeployment:
+    type: OS::TripleO::Tasks::VolumePostPuppet
+    depends_on: VolumeDeployment_Step1
+    properties:
+      servers: {get_param: servers}
+      update_identifier: {get_param: UpdateIdentifier}

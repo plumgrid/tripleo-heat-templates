@@ -9,8 +9,6 @@ ceilometer::agent::auth::auth_tenant_name: 'admin'
 
 nova::network::neutron::neutron_admin_tenant_name: 'service'
 nova::network::neutron::neutron_admin_username: 'neutron'
-nova::network::neutron::vif_plugging_is_fatal: false
-nova::network::neutron::vif_plugging_timeout: 30
 nova::network::neutron::dhcp_domain: ''
 
 neutron::allow_overlapping_ips: true
@@ -29,5 +27,3 @@ cinder::rabbit_heartbeat_timeout_threshold: 60
 ceilometer::rabbit_heartbeat_timeout_threshold: 60
 heat::rabbit_heartbeat_timeout_threshold: 60
 keystone::rabbit_heartbeat_timeout_threshold: 60
-
-nova::cinder_catalog_info: 'volumev2:cinderv2:internalURL'

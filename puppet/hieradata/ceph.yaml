@@ -8,10 +8,8 @@ ceph::profile::params::manage_repo: false
 ceph::profile::params::authentication_type: cephx
 
 ceph_pools:
-  - volumes
-  - vms
-  - images
-
-ceph_classes: []
+  - "%{hiera('cinder_rbd_pool_name')}"
+  - "%{hiera('nova::compute::rbd::libvirt_images_rbd_pool')}"
+  - "%{hiera('glance::backend::rbd::rbd_store_pool')}"
 
 ceph_osd_selinux_permissive: true

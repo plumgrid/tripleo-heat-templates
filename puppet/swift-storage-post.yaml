@@ -2,16 +2,17 @@ heat_template_version: 2015-04-30
 description: 'OpenStack swift storage node post deployment for Puppet'
 
 parameters:
-  ConfigDebug:
-    default: false
-    description: Whether to run config management (e.g. Puppet) in debug mode.
-    type: boolean
   servers:
     type: json
   NodeConfigIdentifiers:
      type: json
      description: Value which changes if the node configuration may need to be re-applied
-
+  UpdateIdentifier:
+    default: ''
+    type: string
+    description: >
+      Setting to a previously unused value during stack-update will trigger
+      package update on all nodes
 
 resources:
 
@@ -19,8 +20,6 @@ resources:
     type: OS::Heat::SoftwareConfig
     properties:
       group: puppet
-      options:
-        enable_debug: {get_param: ConfigDebug}
       outputs:
       - name: result
       config:
@@ -38,8 +37,6 @@ resources:
     type: OS::Heat::SoftwareConfig
     properties:
       group: puppet
-      options:
-        enable_debug: {get_param: ConfigDebug}
       outputs:
       - name: result
       config:
@@ -54,10 +51,17 @@ resources:
       input_values:
         update_identifier: {get_param: NodeConfigIdentifiers}
 
+  StoragePostPuppetDeployment:
+    type: OS::TripleO::Tasks::StoragePostPuppet
+    depends_on: StorageRingbuilderDeployment_Step2
+    properties:
+      servers: {get_param: servers}
+      update_identifier: {get_param: UpdateIdentifier}
+
   # Note, this should come last, so use depends_on to ensure
   # this is created after any other resources.
   ExtraConfig:
-    depends_on: StorageRingbuilderDeployment_Step2
+    depends_on: StoragePostPuppetDeployment
     type: OS::TripleO::NodeExtraConfigPost
     properties:
         servers: {get_param: servers}

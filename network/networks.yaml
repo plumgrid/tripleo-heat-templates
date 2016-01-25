@@ -18,3 +18,9 @@ resources:
 
   TenantNetwork:
     type: OS::TripleO::Network::Tenant
+  
+  PgFabricNetwork:
+    type: OS::TripleO::Network::PgFabric
+
+  PgMgmtNetwork:
+    type: OS::TripleO::Network::PgMgmt   

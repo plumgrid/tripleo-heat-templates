@@ -50,6 +50,10 @@ parameters:
     type: comma_delimited_list
   keystone_admin_api_node_ips:
     type: comma_delimited_list
+  plumgrid_director_mgmt_ips:
+    type: comma_delimited_list
+  plumgrid_director_fabric_ips:
+    type: comma_delimited_list
 
 resources:
 
@@ -239,6 +243,15 @@ resources:
                 neutron::rabbit_hosts: *rabbit_nodes_array
                 nova::rabbit_hosts: *rabbit_nodes_array
                 keystone::rabbit_hosts: *rabbit_nodes_array
+                plumgrid_director_mgmt_ips:
+                  list_join:
+                  - ','
+                  - {get_param: plumgrid_director_mgmt_ips}
+                plumgrid_director_fabric_ips:
+                  list_join:
+                  - ','
+                  - {get_param: plumgrid_director_fabric_ips}
+
 
 outputs:
   config_id:

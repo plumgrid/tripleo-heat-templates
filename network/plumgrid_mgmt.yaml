@@ -1,0 +1,62 @@
+heat_template_version: 2015-04-30
+
+description: >
+  PLUMgrid management network. Used for most APIs, Database, RPC.
+
+parameters:
+  # the defaults here work for static IP assignment (IPAM) only
+  PgMgmtNetCidr:
+    default: '172.16.2.0/24'
+    description: Cidr for the PLUMgrid management API network.
+    type: string
+  PgMgmtNetValueSpecs:
+    default: {'provider:physical_network': 'pg_mgmt', 'provider:network_type': 'flat'}
+    description: Value specs for the PLUMgrid management API network.
+    type: string
+  PgMgmtNetAdminStateUp:
+    default: false
+    description: This admin state of of the network.
+    type: boolean
+  PgMgmtNetEnableDHCP:
+    default: false
+    description: Whether to enable DHCP on the associated subnet.
+    type: boolean
+  PgMgmtNetShared:
+    default: false
+    description: Whether this network is shared across all tenants.
+    type: boolean
+  PgMgmtNetName:
+    default: pg_mgmt
+    description: The name of the PLUMgrid management API network.
+    type: string
+  PgMgmtSubnetName:
+    default: pg_mgmt_subnet
+    description: The name of the PLUMgrid management API subnet in Neutron.
+    type: string
+  PgMgmtAllocationPools:
+    default: [{'start': '172.16.2.4', 'end': '172.16.2.250'}]
+    description: Ip allocation pool range for the PLUMgrid management API network.
+    type: json
+
+resources:
+  PgMgmtNetwork:
+    type: OS::Neutron::Net
+    properties:
+      admin_state_up: {get_param: PgMgmtNetAdminStateUp}
+      name: {get_param: PgMgmtNetName}
+      shared: {get_param: PgMgmtNetShared}
+      value_specs: {get_param: PgMgmtNetValueSpecs}
+
+  PgMgmtSubnet:
+    type: OS::Neutron::Subnet
+    properties:
+      cidr: {get_param: PgMgmtNetCidr}
+      enable_dhcp: {get_param: PgMgmtNetEnableDHCP}
+      name: {get_param: PgMgmtSubnetName}
+      network: {get_resource: PgMgmtNetwork}
+      allocation_pools: {get_param: PgMgmtAllocationPools}
+
+outputs:
+  OS::stack_id:
+    description: Neutron PLUMgrid management network
+    value: {get_resource: PgMgmtNetwork}

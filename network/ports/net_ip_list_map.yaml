@@ -19,6 +19,12 @@ parameters:
   TenantIpList:
     default: []
     type: comma_delimited_list
+  PgMgmtIpList:
+    default: []
+    type: comma_delimited_list
+  PgFabricIpList:
+    default: []
+    type: comma_delimited_list
 
 outputs:
   net_ip_map:
@@ -32,3 +38,5 @@ outputs:
       storage: {get_param: StorageIpList}
       storage_mgmt: {get_param: StorageMgmtIpList}
       tenant: {get_param: TenantIpList}
+      pg_mgmt: {get_param: PgMgmtIpList}
+      pg_fabric: {get_param: PgFabricIpList}

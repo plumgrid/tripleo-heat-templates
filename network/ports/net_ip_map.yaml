@@ -19,6 +19,12 @@ parameters:
   TenantIp:
     default: ''
     type: string
+  PgMgmtIp:
+    default: ''
+    type: string
+  PgFabricIp:
+    default: ''
+    type: string
 
 outputs:
   net_ip_map:
@@ -32,3 +38,5 @@ outputs:
       storage: {get_param: StorageIp}
       storage_mgmt: {get_param: StorageMgmtIp}
       tenant: {get_param: TenantIp}
+      pg_mgmt: {get_param: PgMgmtIp}
+      pg_fabric: {get_param: PgFabricIp}

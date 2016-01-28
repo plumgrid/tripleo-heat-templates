@@ -635,11 +635,11 @@ if hiera('step') >= 3 {
     }
 
     #TODO: Notification engine won't be turned on
-    #Untill https://bugzilla.redhat.com/show_bug.cgi?id=1292182 
-    #gets fixed.  
+    #Untill https://bugzilla.redhat.com/show_bug.cgi?id=1292182
+    #gets fixed.
     #include ::neutron::server::notifications
     include ::neutron::plugins::plumgrid
-  
+
     $check_director_ips = hiera(plumgrid_director_mgmt_ips, 'undef')
     if $check_director_ips == 'undef' {
       $plumgrid_director_ips = hiera(controller_node_ips)
@@ -647,12 +647,51 @@ if hiera('step') >= 3 {
       $plumgrid_director_ips = hiera(plumgrid_director_mgmt_ips)
     }
 
-    # Disable NetworkManager 
+    # Disable NetworkManager
     service { 'NetworkManager':
       ensure => stopped,
       enable => false,
     }
-  
+
+    # Configure new parameters for pglib
+    exec { 'plumlib.ini update':
+    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet 169.254.169.252/30',
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['plumgrid'],
+    }
+
+    exec { 'plumlib.ini update':
+    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini ConnectorType connector_type distributed',
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['plumgrid'],
+    }
+
+    exec { 'plumlib.ini update':
+    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini  keystone_authtoken \#identity_version v2.0',
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['plumgrid'],
+    }
+
+    # Configure new parameters for plugin
+    exec { 'plumgrid.ini update':
+    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway vendor Arista',
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['plumgrid'],
+    }
+
+    exec { 'plumgrid.ini update':
+    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_username plumgrid',
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['plumgrid'],
+    }
+
+    exec { 'plumgrid.ini update':
+    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_password plumgrid',
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['plumgrid'],
+    }
+
+
     # Install PLUMgrid Director
     class{'plumgrid':
       plumgrid_ip => $plumgrid_director_ips,

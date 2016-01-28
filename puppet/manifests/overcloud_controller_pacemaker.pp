@@ -703,22 +703,20 @@ if hiera('step') >= 3 {
       repo_component => hiera('plumgrid_repo_component'),
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
       manage_repo => true,
+      source_net=> hiera('plumgrid_network', 'undef'),
+      dest_net => hiera('plumgrid_network', 'undef'),
       before => Class['::neutron'],
     }
+
     class{'sal':
       plumgrid_ip => $plumgrid_director_ips,
       virtual_ip => hiera('neutron::plugins::plumgrid::director_server'),
       rest_port => '9180',
       mgmt_dev => hiera('plumgrid_mgmt_dev', '%AUTO_DEV%'),
+      source_net=> hiera('plumgrid_network', 'undef'),
       before => Class['::neutron'],
     }
-    class { firewall: }
 
-    class { plumgrid::firewall:
-      source_net=> hiera('plumgrid_network', 'undef') ,
-      dest_net => hiera('plumgrid_network', 'undef'),
-      before => Class['::neutron'],
-    }
   } else {
     # Neutron class definitions
     include ::neutron

@@ -129,6 +129,8 @@ if 'iovisor' in hiera('neutron_mechanism_drivers') {
       repo_baseurl => hiera('plumgrid_repo_baseurl'), 
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
       repo_component => hiera('plumgrid_repo_component'),
+      source_net=> hiera('plumgrid_network', undef),
+      dest_net => hiera('plumgrid_network', undef),
       manage_repo => true,
     }
 
@@ -140,10 +142,6 @@ if 'iovisor' in hiera('neutron_mechanism_drivers') {
       action => 'accept',
     }    
 
-    class { plumgrid::firewall:
-      source_net=> hiera('plumgrid_network', undef),
-      dest_net => hiera('plumgrid_network', undef),
-    }
 } else {
 
   class { 'neutron::plugins::ml2':

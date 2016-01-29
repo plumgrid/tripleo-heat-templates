@@ -34,6 +34,10 @@ parameters:
     description: Port of Nova Metadata
     type: string
     default: 8775
+  PLUMgridNovaMetadataSubnet:
+    description: Subnet for PLUMgrid Metadata
+    type: string
+    default: 169.254.169.252/30
   PLUMgridRepoURL:
     description: URL for PLUMgrid Repository
     type: string
@@ -54,6 +58,18 @@ parameters:
     description: Device for PLUMgrid Fabric Network
     type: string
     default: ''
+  L2GatewayVendor:
+    description: Vendor for L2 Gateway
+    type: string
+    default: Arista
+  L2GatewayUsername:
+    description: Username for L2 Gateway
+    type: string
+    default: plumgrid
+  L2GatewayPassword:
+    description: Password for L2 Gateway
+    type: string
+    default: plumgrid
 
 resources:
   ControllerPLUMgridConfig:
@@ -81,6 +97,10 @@ resources:
                 plumgrid_repo_component: {get_input: plumgrid_repo_component}
                 plumgrid_virtual_ip: {get_input: plumgrid_director_server}
                 plumgrid_network: {get_input: plumgrid_network}
+                plumgrid_nova_metadata_subnet: {get_input: plumgrid_nova_metadata_subnet}
+                plumgrid_l2_gw_vendor: {get_input: plumgrid_l2_gw_vendor}
+                plumgrid_l2_gw_username: {get_input: plumgrid_l2_gw_username}
+                plumgrid_l2_gw_password: {get_input: plumgrid_l2_gw_password}
 
   ControllerPLUMgridDeployment:
     type: OS::Heat::StructuredDeployment
@@ -99,6 +119,10 @@ resources:
         plumgrid_network: {get_param: PLUMgridNetwork}
         plumgrid_mgmt_dev: {get_param: PLUMgridMgmtDevControl}
         plumgrid_fabric_dev: {get_param: PLUMgridFabricDevControl}
+        plumgrid_nova_metadata_subnet: {get_param: PLUMgridNovaMetadataSubnet}
+        plumgrid_l2_gw_vendor: {get_param: L2GatewayVendor}
+        plumgrid_l2_gw_username: {get_param: L2GatewayUsername}
+        plumgrid_l2_gw_password: {get_param: L2GatewayPassword}
 
 outputs:
   deploy_stdout:

@@ -654,8 +654,9 @@ if hiera('step') >= 3 {
     }
 
     # Configure new parameters for pglib
+    $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.254.169.252/30')
     exec { 'plumlib.ini update':
-    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet 169.254.169.252/30',
+    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
     path    => [ '/usr/local/bin/', '/bin/' ],
     before => Class['plumgrid'],
     }
@@ -673,20 +674,23 @@ if hiera('step') >= 3 {
     }
 
     # Configure new parameters for plugin
+    $gw_vendor = hiera(plumgrid_l2_gw_vendor)
     exec { 'plumgrid.ini update':
-    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway vendor Arista',
+    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway vendor ${gw_vendor}",
     path    => [ '/usr/local/bin/', '/bin/' ],
     before => Class['plumgrid'],
     }
 
+    $gw_username = hiera(plumgrid_l2_gw_username)
     exec { 'plumgrid.ini update':
-    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_username plumgrid',
+    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_username ${gw_username}",
     path    => [ '/usr/local/bin/', '/bin/' ],
     before => Class['plumgrid'],
     }
 
+    $gw_password = hiera(plumgrid_l2_gw_password)
     exec { 'plumgrid.ini update':
-    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_password plumgrid',
+    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_password ${gw_password}",
     path    => [ '/usr/local/bin/', '/bin/' ],
     before => Class['plumgrid'],
     }

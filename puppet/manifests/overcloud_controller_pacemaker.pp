@@ -690,6 +690,12 @@ if hiera('step') >= 3 {
     path    => [ '/usr/local/bin/', '/bin/' ],
     }
 
+    # Upgarde neutron db
+    exec { 'upgarde neutron db':
+    command -=> 'plumgrid-db-manage upgrade heads',
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    require => Class['::neutron'],
+    }
 
     # Install PLUMgrid Director
     class{'plumgrid':

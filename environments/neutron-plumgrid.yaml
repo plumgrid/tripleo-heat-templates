@@ -13,15 +13,20 @@ parameter_defaults:
   PLUMgridPassword: plumgrid
   PLUMgridServerTimeOut: 99
 
- # Optional paramaters for PLUMgrid neutron plugin
- # PLUMgridNovaMetadataIP: 169.254.169.254
- # PLUMgridNovaMetadataPort: 8775
+  PLUMgridNovaMetadataIP: 169.1.1.254
+  PLUMgridNovaMetadataPort: 8775
+  PLUMgridNovaMetadataSubnet: 169.1.1.254/30
 
  # Parameterd for PLUMgrid zone creation
   PLUMgridRepoURL: http://127.0.0.1:81/yum
   PLUMgridRepoComponent: fuji-413
   PLUMgridNetwork: 127.0.0.0/24
   EnablePackageInstall: true
+
+ #L2 Gateway parameters
+ # L2GatewayVendor: Arista
+ # L2GatewayUsername: plumgrid
+ # L2GatewayPassword: plumgrid
 
  # Use them for split management and fabric PLUMgrid network
  # PLUMgridMgmtDevControl: br-mgmt

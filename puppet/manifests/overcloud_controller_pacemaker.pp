@@ -692,7 +692,7 @@ if hiera('step') >= 3 {
 
     # Upgarde neutron db
     exec { 'upgarde neutron db':
-    command -=> 'plumgrid-db-manage upgrade heads',
+    command => 'plumgrid-db-manage upgrade heads',
     path    => [ '/usr/local/bin/', '/bin/' ],
     require => Class['::neutron'],
     }

@@ -654,45 +654,40 @@ if hiera('step') >= 3 {
     }
 
     # Configure new parameters for pglib
-    $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.254.169.252/30')
-    exec { 'plumlib.ini update':
+    $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.1.1.254/30')
+    exec { 'pg_lib metadata subnet':
     command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
     path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['plumgrid'],
+    before => Class['::neutron'],
     }
 
-    exec { 'plumlib.ini update':
+    exec { 'pg_lib connector_type':
     command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini ConnectorType connector_type distributed',
     path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['plumgrid'],
     }
 
-    exec { 'plumlib.ini update':
+    exec { 'pg_lib identity version':
     command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini  keystone_authtoken \#identity_version v2.0',
     path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['plumgrid'],
     }
 
     # Configure new parameters for plugin
     $gw_vendor = hiera(plumgrid_l2_gw_vendor)
-    exec { 'plumgrid.ini update':
+    exec { 'pg l2 vendor':
     command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway vendor ${gw_vendor}",
     path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['plumgrid'],
     }
 
     $gw_username = hiera(plumgrid_l2_gw_username)
-    exec { 'plumgrid.ini update':
+    exec { 'pg l2 username':
     command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_username ${gw_username}",
     path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['plumgrid'],
     }
 
     $gw_password = hiera(plumgrid_l2_gw_password)
-    exec { 'plumgrid.ini update':
+    exec { 'pg l2 password':
     command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_password ${gw_password}",
     path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['plumgrid'],
     }
 
 

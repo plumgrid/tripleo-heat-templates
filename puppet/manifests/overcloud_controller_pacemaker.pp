@@ -666,11 +666,6 @@ if hiera('step') >= 3 {
     path    => [ '/usr/local/bin/', '/bin/' ],
     }
 
-    exec { 'pg_lib identity version':
-    command => 'openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini  keystone_authtoken \#identity_version v2.0',
-    path    => [ '/usr/local/bin/', '/bin/' ],
-    }
-
     # Configure new parameters for plugin
     $gw_vendor = hiera(plumgrid_l2_gw_vendor)
     exec { 'pg l2 vendor':
@@ -690,12 +685,6 @@ if hiera('step') >= 3 {
     path    => [ '/usr/local/bin/', '/bin/' ],
     }
 
-    # Upgarde neutron db
-    exec { 'upgarde neutron db':
-    command => 'plumgrid-db-manage upgrade heads',
-    path    => [ '/usr/local/bin/', '/bin/' ],
-    require => Class['::neutron'],
-    }
 
     # Install PLUMgrid Director
     class{'plumgrid':
@@ -1218,6 +1207,10 @@ if hiera('step') >= 4 {
       pacemaker::resource::service { $::neutron::params::server_service:
         clone_params   => "interleave=true",
         require => Pacemaker::Resource::Service[$::keystone::params::service_name]
+      }
+      exec { 'upgarde neutron db':
+        command => 'plumgrid-db-manage upgrade heads',
+        path    => [ '/usr/local/bin/', '/usr/bin/' ],
       }
     } else {
       pacemaker::resource::service { $::neutron::params::server_service:

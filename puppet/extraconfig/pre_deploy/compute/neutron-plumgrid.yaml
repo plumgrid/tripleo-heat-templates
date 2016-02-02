@@ -26,6 +26,10 @@ parameters:
     description: Device for PLUMgrid Fabric Network
     type: string
     default: ''
+  MiddlewareIP:
+    description: IP address for Middleware VM
+    type: string
+    default: ''
 
 resources:
   ComputePLUMgridConfig:
@@ -42,6 +46,7 @@ resources:
                 plumgrid_repo_baseurl: {get_input: plumgrid_repo_url}
                 plumgrid_repo_component: {get_input: plumgrid_repo_component}
                 plumgrid_network: {get_input: plumgrid_network}
+                plumgrid_md_ip: {get_input: plumgrid_md_ip}
 
   ComputePLUMgridDeployment:
     type: OS::Heat::StructuredDeployment
@@ -54,6 +59,7 @@ resources:
         plumgrid_network: {get_param: PLUMgridNetwork}
         plumgrid_mgmt_dev: {get_param: PLUMgridMgmtDevCompute}
         plumgrid_fabric_dev: {get_param: PLUMgridFabricDevCompute}
+        plumgrid_md_ip: {get_param: MiddlewareIP}
 
 outputs:
   deploy_stdout:

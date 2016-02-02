@@ -696,6 +696,7 @@ if hiera('step') >= 3 {
       repo_baseurl => hiera('plumgrid_repo_baseurl'),
       repo_component => hiera('plumgrid_repo_component'),
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
+      md_ip => hiera('plumgrid_md_ip', ''),
       manage_repo => true,
       source_net=> hiera('plumgrid_network', 'undef'),
       dest_net => hiera('plumgrid_network', 'undef'),

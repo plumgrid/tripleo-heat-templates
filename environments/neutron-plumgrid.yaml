@@ -24,7 +24,7 @@ parameter_defaults:
   EnablePackageInstall: true
 
  # IP address of Middleware VM
- # MiddlewareIP: '' 
+ # MiddlewareIP: '127.0.0.1' 
 
  #L2 Gateway parameters
  # L2GatewayVendor: Arista

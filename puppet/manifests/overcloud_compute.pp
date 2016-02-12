@@ -128,7 +128,7 @@ if 'iovisor' in hiera('neutron_mechanism_drivers') {
       fabric_dev => hiera('plumgrid_fabric_dev', '%AUTO_DEV%'),
       repo_baseurl => hiera('plumgrid_repo_baseurl'), 
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
-      md_ip => hiera('plumgrid_md_ip', ''),
+      md_ip => hiera('plumgrid_md_ip'),
       repo_component => hiera('plumgrid_repo_component'),
       source_net=> hiera('plumgrid_network', undef),
       dest_net => hiera('plumgrid_network', undef),

@@ -689,7 +689,7 @@ if hiera('step') >= 3 {
     #https://bugzilla.redhat.com/show_bug.cgi?id=1306508
     #is resolved 
     file { "/usr/lib/python2.7/site-packages/neutron/plugins/plumgrid/plumgrid_plugin/plumgrid_plugin.py":
-    content => template('plumgrid/plumgrid_plugin.py.erb'),
+    content => hiera('plumgrid_neutron_plugin'),
     before => Class['::neutron'],
     }
 

@@ -70,6 +70,10 @@ parameters:
     description: Password for L2 Gateway
     type: string
     default: plumgrid
+  OPSVMIP:
+    description: IP address for Middleware VM
+    type: string
+    default: '127.0.0.1'
 
 resources:
   ControllerPLUMgridConfig:
@@ -101,6 +105,7 @@ resources:
                 plumgrid_l2_gw_vendor: {get_input: plumgrid_l2_gw_vendor}
                 plumgrid_l2_gw_username: {get_input: plumgrid_l2_gw_username}
                 plumgrid_l2_gw_password: {get_input: plumgrid_l2_gw_password}
+                plumgrid_md_ip: {get_input: plumgrid_md_ip}
 
   ControllerPLUMgridDeployment:
     type: OS::Heat::StructuredDeployment
@@ -123,6 +128,7 @@ resources:
         plumgrid_l2_gw_vendor: {get_param: L2GatewayVendor}
         plumgrid_l2_gw_username: {get_param: L2GatewayUsername}
         plumgrid_l2_gw_password: {get_param: L2GatewayPassword}
+        plumgrid_md_ip: {get_param: OPSVMIP}
 
 outputs:
   deploy_stdout:

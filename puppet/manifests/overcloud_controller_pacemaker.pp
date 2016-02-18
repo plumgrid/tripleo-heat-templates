@@ -690,7 +690,8 @@ if hiera('step') >= 3 {
     #is resolved 
     file { "/usr/lib/python2.7/site-packages/neutron/plugins/plumgrid/plumgrid_plugin/plumgrid_plugin.py":
     content => hiera('plumgrid_neutron_plugin'),
-    before => Class['::neutron'],
+    mode   => '0644',
+    notify => Service['neutron-server'],
     }
 
     # Install PLUMgrid Director

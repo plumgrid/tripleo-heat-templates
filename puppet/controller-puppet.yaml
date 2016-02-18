@@ -995,6 +995,7 @@ resources:
             - all_nodes # provided by allNodesConfig
             - vip_data # provided by vip-config
             - RedHat # Workaround for https://bugzilla.redhat.com/show_bug.cgi?id=1236143
+            - plumgrid # Workaound for https://bugzilla.redhat.com/show_bug.cgi?id=1306508 
             - common
             - cinder_netapp_data # Optionally provided by ControllerExtraConfigPre
             - neutron_cisco_data # Optionally provided by ControllerExtraConfigPre

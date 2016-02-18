@@ -84,6 +84,8 @@ resources:
           datafiles:
             RedHat:
               raw_data: {get_file: hieradata/RedHat.yaml}
+            plumgrid:
+              raw_data: {get_file: hieradata/plumgrid.yaml}
             all_nodes:
               mapped_data:
                 controller_node_ips:

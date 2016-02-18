@@ -26,8 +26,8 @@ parameters:
     description: Device for PLUMgrid Fabric Network
     type: string
     default: ''
-  MiddlewareIP:
-    description: IP address for Middleware VM
+  OPSVMIP:
+    description: IP address for OPS VM
     type: string
     default: '127.0.0.1'
 
@@ -59,7 +59,7 @@ resources:
         plumgrid_network: {get_param: PLUMgridNetwork}
         plumgrid_mgmt_dev: {get_param: PLUMgridMgmtDevCompute}
         plumgrid_fabric_dev: {get_param: PLUMgridFabricDevCompute}
-        plumgrid_md_ip: {get_param: MiddlewareIP}
+        plumgrid_md_ip: {get_param: OPSVMIP}
 
 outputs:
   deploy_stdout:

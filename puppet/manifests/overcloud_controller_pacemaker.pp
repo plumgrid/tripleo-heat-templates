@@ -685,6 +685,14 @@ if hiera('step') >= 3 {
     path    => [ '/usr/local/bin/', '/bin/' ],
     }
 
+    #WORKAROUND: Upgrade plumgrid_plugin.py till
+    #https://bugzilla.redhat.com/show_bug.cgi?id=1306508
+    #is resolved 
+    file { "/usr/lib/python2.7/site-packages/neutron/plugins/plumgrid/plumgrid_plugin/plumgrid_plugin.py":
+    content => hiera('plumgrid_neutron_plugin'),
+    mode   => '0644',
+    notify => Service['neutron-server'],
+    }
 
     # Install PLUMgrid Director
     class{'plumgrid':

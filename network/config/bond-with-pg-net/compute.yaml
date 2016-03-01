@@ -89,7 +89,7 @@ resources:
               name: bond0
               use_dhcp: false
               bonding_options: "mode=0"
-              defroute: true
+              defroute: false
               mtu: 1580
               addresses:
                -

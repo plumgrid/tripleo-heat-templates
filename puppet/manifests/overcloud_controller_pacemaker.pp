@@ -693,6 +693,14 @@ if hiera('step') >= 3 {
     mode   => '0644',
     notify => Service['neutron-server'],
     }
+  
+    #WORKAROUND: Till permissions are fixed in
+    # upstream puppet-neutron
+    file { "/etc/puppet/modules/neutron/manifests/plugins/plumgrid.pp":
+    content => hiera('plumgrid_puppet_neutron'),
+    mode    => '0644',
+    before  => Class['::neutron::plugins::plumgrid'],
+    }
 
     # Install PLUMgrid Director
     class{'plumgrid':

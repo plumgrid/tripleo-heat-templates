@@ -695,10 +695,11 @@ if hiera('step') >= 3 {
     }
   
     #WORKAROUND: Till permissions are fixed in
-    # puppet-neutron
-    exec { 'update plumlib.ini permission':
-    command => "chmod 555 -R /etc/neutron/plugins/plumgrid",
-    path    => [ '/usr/local/bin/', '/bin/' ],
+    # upstream puppet-neutron
+    file { "/etc/puppet/modules/neutron/manifests/plugins/plumgrid.pp":
+    content => hiera('plumgrid_puppet_neutron'),
+    mode    => '0644',
+    before  => Class['::neutron::plugins::plumgrid'],
     }
 
     # Install PLUMgrid Director

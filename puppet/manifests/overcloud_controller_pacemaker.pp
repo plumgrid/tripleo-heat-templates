@@ -658,7 +658,7 @@ if hiera('step') >= 3 {
     exec { 'pg_lib metadata subnet':
     command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
     path    => [ '/usr/local/bin/', '/bin/' ],
-    notify => Service[$::neutron::params::server_service],
+    before => Class['::neutron'],
     }
 
     exec { 'pg_lib connector_type':

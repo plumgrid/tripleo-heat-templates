@@ -15,11 +15,15 @@
 
 include tripleo::packages
 
+create_resources(kmod::load, hiera('kernel_modules'), {})
 create_resources(sysctl::value, hiera('sysctl_settings'), {})
+Exec <| tag == 'kmod::load' |>  -> Sysctl <| |>
 
 if count(hiera('ntp::servers')) > 0 {
   include ::ntp
 }
+
+include ::timezone
 
 include ::cinder
 include ::cinder::config
@@ -52,5 +56,5 @@ class { 'snmp':
   snmpd_config => [ join(['rouser ', hiera('snmpd_readonly_user_name')]), 'proc  cron', 'includeAllDisks  10%', 'master agentx', 'trapsink localhost public', 'iquerySecName internalUser', 'rouser internalUser', 'defaultMonitors yes', 'linkUpDownNotifications yes' ],
 }
 
-hiera_include('volume_classes')
 package_manifest{'/var/lib/tripleo/installed-packages/overcloud_volume': ensure => present}
+hiera_include('volume_classes')

@@ -15,15 +15,21 @@
 
 include tripleo::packages
 
+$enable_load_balancer = hiera('enable_load_balancer', true)
+
 if hiera('step') >= 1 {
 
+  create_resources(kmod::load, hiera('kernel_modules'), {})
   create_resources(sysctl::value, hiera('sysctl_settings'), {})
+  Exec <| tag == 'kmod::load' |>  -> Sysctl <| |>
 
   $controller_node_ips = split(hiera('controller_node_ips'), ',')
 
-  class { '::tripleo::loadbalancer' :
-    controller_hosts => $controller_node_ips,
-    manage_vip       => true,
+  if $enable_load_balancer {
+    class { '::tripleo::loadbalancer' :
+      controller_hosts => $controller_node_ips,
+      manage_vip       => true,
+    }
   }
 
 }
@@ -34,19 +40,28 @@ if hiera('step') >= 2 {
     include ::ntp
   }
 
+  include ::timezone
+
   # MongoDB
   if downcase(hiera('ceilometer_backend')) == 'mongodb' {
     include ::mongodb::globals
 
     include ::mongodb::server
-    $mongo_node_ips_with_port = suffix(hiera('mongo_node_ips'), ':27017')
+    if str2bool(hiera('mongodb::server::ipv6', false)) {
+      $mongo_node_ips_with_port_prefixed = prefix(hiera('mongo_node_ips'), '[')
+      $mongo_node_ips_with_port = suffix($mongo_node_ips_with_port_prefixed, ']:27017')
+      $mongo_node_ips_with_port_nobr = suffix(hiera('mongo_node_ips'), ':27017')
+    } else {
+      $mongo_node_ips_with_port = suffix(hiera('mongo_node_ips'), ':27017')
+      $mongo_node_ips_with_port_nobr = suffix(hiera('mongo_node_ips'), ':27017')
+    }
     $mongo_node_string = join($mongo_node_ips_with_port, ',')
 
     $mongodb_replset = hiera('mongodb::server::replset')
     $ceilometer_mongodb_conn_string = "mongodb://${mongo_node_string}/ceilometer?replicaSet=${mongodb_replset}"
     if downcase(hiera('bootstrap_nodeid')) == $::hostname {
       mongodb_replset { $mongodb_replset :
-        members => $mongo_node_ips_with_port,
+        members => $mongo_node_ips_with_port_nobr,
       }
     }
   }
@@ -76,11 +91,15 @@ if hiera('step') >= 2 {
     $mysql_config_file = '/etc/my.cnf.d/server.cnf'
   }
   # TODO Galara
+  # FIXME: due to https://bugzilla.redhat.com/show_bug.cgi?id=1298671 we
+  # set bind-address to a hostname instead of an ip address; to move Mysql
+  # from internal_api on another network we'll have to customize both
+  # MysqlNetwork and ControllerHostnameResolveNetwork in ServiceNetMap
   class { 'mysql::server':
     config_file => $mysql_config_file,
     override_options => {
       'mysqld' => {
-        'bind-address' => hiera('mysql_bind_host'),
+        'bind-address' => $::hostname,
         'max_connections' => hiera('mysql_max_connections'),
         'open_files_limit' => '-1',
       },
@@ -102,13 +121,23 @@ if hiera('step') >= 2 {
 
   $rabbit_nodes = hiera('rabbit_node_ips')
   if count($rabbit_nodes) > 1 {
+
+    $rabbit_ipv6 = str2bool(hiera('rabbit_ipv6', false))
+    if $rabbit_ipv6 {
+      $rabbit_env = merge(hiera('rabbitmq_environment'), {
+        'RABBITMQ_SERVER_START_ARGS' => '"-proto_dist inet6_tcp"'
+      })
+    } else {
+      $rabbit_env = hiera('rabbitmq_environment')
+    }
+
     class { '::rabbitmq':
       config_cluster          => true,
       cluster_nodes           => $rabbit_nodes,
       tcp_keepalive           => false,
       config_kernel_variables => hiera('rabbitmq_kernel_variables'),
       config_variables        => hiera('rabbitmq_config_variables'),
-      environment_variables   => hiera('rabbitmq_environment'),
+      environment_variables   => $rabbit_env,
     }
     rabbitmq_policy { 'ha-all@/':
       pattern    => '^(?!amq\.).*',
@@ -126,8 +155,15 @@ if hiera('step') >= 2 {
   $enable_ceph = hiera('ceph_storage_count', 0) > 0
 
   if $enable_ceph {
-    class { 'ceph::profile::params':
-      mon_initial_members => downcase(hiera('ceph_mon_initial_members'))
+    $mon_initial_members = downcase(hiera('ceph_mon_initial_members'))
+    if str2bool(hiera('ceph_ipv6', false)) {
+      $mon_host = hiera('ceph_mon_host_v6')
+    } else {
+      $mon_host = hiera('ceph_mon_host')
+    }
+    class { '::ceph::profile::params':
+      mon_initial_members => $mon_initial_members,
+      mon_host            => $mon_host,
     }
     include ::ceph::profile::mon
   }
@@ -151,6 +187,14 @@ if hiera('step') >= 2 {
   }
 
   if str2bool(hiera('enable_external_ceph', 'false')) {
+    if str2bool(hiera('ceph_ipv6', false)) {
+      $mon_host = hiera('ceph_mon_host_v6')
+    } else {
+      $mon_host = hiera('ceph_mon_host')
+    }
+    class { '::ceph::profile::params':
+      mon_host            => $mon_host,
+    }
     include ::ceph::profile::client
   }
 
@@ -202,18 +246,36 @@ if hiera('step') >= 3 {
   $http_store = ['glance.store.http.Store']
   $glance_store = concat($http_store, $backend_store)
 
+  # https://bugzilla.redhat.com/show_bug.cgi?id=1299855#c5
+  $glance_ipv6 = str2bool(hiera('glance_ipv6', false))
+  $glance_registry_network = hiera('glance_registry_network')
+  if $glance_ipv6 {
+    $glance_registry_network_real = "[${glance_registry_network}]"
+  } else {
+    $glance_registry_network_real = $glance_registry_network
+  }
+
   # TODO: notifications, scrubber, etc.
   include ::glance
   class { 'glance::api':
-    known_stores => $glance_store
+    known_stores  => $glance_store,
+    registry_host => $glance_registry_network_real
   }
   include ::glance::registry
   include join(['::glance::backend::', $glance_backend])
 
-  class { '::nova' :
-    memcached_servers => suffix(hiera('memcache_node_ips'), ':11211'),
+  $memcached_ipv6 = str2bool(hiera('memcached_ipv6', false))
+  if $memcached_ipv6 {
+    $cache_server_ip_real = hiera('memcache_node_ips_v6', '[::1]')
+  } else {
+    $cache_server_ip_real = hiera('memcache_node_ips', '127.0.0.1')
   }
-  include ::nova::config
+  $memcached_servers_real = suffix($cache_server_ip_real, ':11211')
+
+  class { '::nova' :
+    memcached_servers => $memcached_servers_real
+  }
+
   include ::nova::api
   include ::nova::cert
   include ::nova::conductor
@@ -225,66 +287,77 @@ if hiera('step') >= 3 {
 
   include ::neutron
   include ::neutron::server
-  include ::neutron::agents::l3
-  include ::neutron::agents::dhcp
-  include ::neutron::agents::metadata
+  include ::neutron::server::notifications
 
-  file { '/etc/neutron/dnsmasq-neutron.conf':
-    content => hiera('neutron_dnsmasq_options'),
-    owner   => 'neutron',
-    group   => 'neutron',
-    notify  => Service['neutron-dhcp-service'],
-    require => Package['neutron'],
-  }
+  # If the value of core plugin is set to 'nuage',
+  # include nuage core plugin,
+  # else use the default value of 'ml2'
+  if hiera('neutron::core_plugin') == 'neutron.plugins.nuage.plugin.NuagePlugin' {
+    include ::neutron::plugins::nuage
+  } else {
+    include ::neutron::agents::l3
+    include ::neutron::agents::dhcp
+    include ::neutron::agents::metadata
 
-  class { 'neutron::plugins::ml2':
-    flat_networks => split(hiera('neutron_flat_networks'), ','),
-    tenant_network_types => [hiera('neutron_tenant_network_type')],
-    mechanism_drivers   => [hiera('neutron_mechanism_drivers')],
-  }
-  class { 'neutron::agents::ml2::ovs':
-    bridge_mappings => split(hiera('neutron_bridge_mappings'), ','),
-    tunnel_types => split(hiera('neutron_tunnel_types'), ','),
-  }
-  if 'cisco_n1kv' in hiera('neutron_mechanism_drivers') {
-    include neutron::plugins::ml2::cisco::nexus1000v
-
-    class { 'neutron::agents::n1kv_vem':
-      n1kv_source          => hiera('n1kv_vem_source', undef),
-      n1kv_version         => hiera('n1kv_vem_version', undef),
+    file { '/etc/neutron/dnsmasq-neutron.conf':
+      content => hiera('neutron_dnsmasq_options'),
+      owner   => 'neutron',
+      group   => 'neutron',
+      notify  => Service['neutron-dhcp-service'],
+      require => Package['neutron'],
     }
 
-    class { 'n1k_vsm':
-      n1kv_source       => hiera('n1kv_vsm_source', undef),
-      n1kv_version      => hiera('n1kv_vsm_version', undef),
-      pacemaker_control => false,
+    class { '::neutron::plugins::ml2':
+      flat_networks        => split(hiera('neutron_flat_networks'), ','),
+      tenant_network_types => [hiera('neutron_tenant_network_type')],
+      mechanism_drivers    => [hiera('neutron_mechanism_drivers')],
     }
-  }
+    class { '::neutron::agents::ml2::ovs':
+      bridge_mappings => split(hiera('neutron_bridge_mappings'), ','),
+      tunnel_types    => split(hiera('neutron_tunnel_types'), ','),
+    }
+    if 'cisco_n1kv' in hiera('neutron_mechanism_drivers') {
+      include ::neutron::plugins::ml2::cisco::nexus1000v
 
-  if 'cisco_ucsm' in hiera('neutron_mechanism_drivers') {
-    include ::neutron::plugins::ml2::cisco::ucsm
-  }
-  if 'cisco_nexus' in hiera('neutron_mechanism_drivers') {
-    include ::neutron::plugins::ml2::cisco::nexus
-    include ::neutron::plugins::ml2::cisco::type_nexus_vxlan
-  }
+      class { '::neutron::agents::n1kv_vem':
+        n1kv_source  => hiera('n1kv_vem_source', undef),
+        n1kv_version => hiera('n1kv_vem_version', undef),
+      }
 
-  if hiera('neutron_enable_bigswitch_ml2', false) {
-    include neutron::plugins::ml2::bigswitch::restproxy
-  }
-  neutron_l3_agent_config {
-    'DEFAULT/ovs_use_veth': value => hiera('neutron_ovs_use_veth', false);
-  }
-  neutron_dhcp_agent_config {
-    'DEFAULT/ovs_use_veth': value => hiera('neutron_ovs_use_veth', false);
-  }
+      class { '::n1k_vsm':
+        n1kv_source       => hiera('n1kv_vsm_source', undef),
+        n1kv_version      => hiera('n1kv_vsm_version', undef),
+        pacemaker_control => false,
+      }
+    }
 
-  Service['neutron-server'] -> Service['neutron-dhcp-service']
-  Service['neutron-server'] -> Service['neutron-l3']
-  Service['neutron-server'] -> Service['neutron-ovs-agent-service']
-  Service['neutron-server'] -> Service['neutron-metadata']
+    if 'cisco_ucsm' in hiera('neutron_mechanism_drivers') {
+      include ::neutron::plugins::ml2::cisco::ucsm
+    }
+    if 'cisco_nexus' in hiera('neutron_mechanism_drivers') {
+      include ::neutron::plugins::ml2::cisco::nexus
+      include ::neutron::plugins::ml2::cisco::type_nexus_vxlan
+    }
+
+    if hiera('neutron_enable_bigswitch_ml2', false) {
+      include ::neutron::plugins::ml2::bigswitch::restproxy
+    }
+    neutron_l3_agent_config {
+      'DEFAULT/ovs_use_veth': value => hiera('neutron_ovs_use_veth', false);
+    }
+    neutron_dhcp_agent_config {
+      'DEFAULT/ovs_use_veth': value => hiera('neutron_ovs_use_veth', false);
+    }
+
+    Service['neutron-server'] -> Service['neutron-dhcp-service']
+    Service['neutron-server'] -> Service['neutron-l3']
+    Service['neutron-server'] -> Service['neutron-ovs-agent-service']
+    Service['neutron-server'] -> Service['neutron-metadata']
+  }
 
   include ::cinder
+  include ::tripleo::ssl::cinder_config
+  include ::cinder::config
   include ::cinder::api
   include ::cinder::glance
   include ::cinder::scheduler
@@ -314,7 +387,7 @@ if hiera('step') >= 3 {
     $ceph_pools = hiera('ceph_pools')
     ceph::pool { $ceph_pools : }
 
-    $cinder_pool_requires = [Ceph::Pool['volumes']]
+    $cinder_pool_requires = [Ceph::Pool[hiera('cinder_rbd_pool_name')]]
 
   } else {
     $cinder_pool_requires = []
@@ -323,9 +396,13 @@ if hiera('step') >= 3 {
   if hiera('cinder_enable_rbd_backend', false) {
     $cinder_rbd_backend = 'tripleo_ceph'
 
+    cinder_config {
+      "${cinder_rbd_backend}/host": value => 'hostgroup';
+    }
+
     cinder::backend::rbd { $cinder_rbd_backend :
-      rbd_pool        => 'volumes',
-      rbd_user        => 'openstack',
+      rbd_pool        => hiera('cinder_rbd_pool_name'),
+      rbd_user        => hiera('ceph_client_user_name'),
       rbd_secret_uuid => hiera('ceph::profile::params::fsid'),
       require         => $cinder_pool_requires,
     }
@@ -333,10 +410,6 @@ if hiera('step') >= 3 {
 
   if hiera('cinder_enable_netapp_backend', false) {
     $cinder_netapp_backend = hiera('cinder::backend::netapp::title')
-
-    cinder_config {
-      "${cinder_netapp_backend}/host": value => 'hostgroup';
-    }
 
     if hiera('cinder::backend::netapp::nfs_shares', undef) {
       $cinder_netapp_nfs_shares = split(hiera('cinder::backend::netapp::nfs_shares', undef), ',')
@@ -398,6 +471,7 @@ if hiera('step') >= 3 {
   include ::swift::proxy::keystone
   include ::swift::proxy::authtoken
   include ::swift::proxy::staticweb
+  include ::swift::proxy::ceilometer
   include ::swift::proxy::ratelimit
   include ::swift::proxy::catch_errors
   include ::swift::proxy::tempurl
@@ -432,7 +506,6 @@ if hiera('step') >= 3 {
     }
   }
   include ::ceilometer
-  include ::ceilometer::config
   include ::ceilometer::api
   include ::ceilometer::agent::notification
   include ::ceilometer::agent::central
@@ -461,8 +534,11 @@ if hiera('step') >= 3 {
     $_profile_support = 'None'
   }
   $neutron_options   = {'profile_support' => $_profile_support }
+  $vhost_params = { add_listen => false }
+
   class { 'horizon':
-    cache_server_ip    => hiera('memcache_node_ips', '127.0.0.1'),
+    cache_server_ip    => $cache_server_ip_real,
+    vhost_extra_params => $vhost_params,
     neutron_options    => $neutron_options,
   }
 
@@ -482,6 +558,15 @@ if hiera('step') >= 3 {
 
 if hiera('step') >= 4 {
   include ::keystone::cron::token_flush
+
+  if downcase(hiera('bootstrap_nodeid')) == $::hostname {
+    include ::keystone::roles::admin
+
+    # TO-DO: Remove this class as soon as Keystone v3 will be fully functional
+    include ::heat::keystone::domain
+    Class['::keystone::roles::admin'] -> Exec['heat_domain_create']
+  }
+
 } #END STEP 4
 
 $package_manifest_name = join(['/var/lib/tripleo/installed-packages/overcloud_controller', hiera('step')])

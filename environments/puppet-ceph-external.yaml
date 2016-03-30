@@ -10,9 +10,13 @@ parameters:
   #CephExternalMonHost: '172.16.1.7, 172.16.1.8'
 
   # the following parameters enable Ceph backends for Cinder, Glance, and Nova
+  CephClientUserName: openstack
   NovaEnableRbdBackend: true
   CinderEnableRbdBackend: true
   GlanceBackend: rbd
+  NovaRbdPoolName: vms
+  CinderRbdPoolName: volumes
+  GlanceRbdPoolName: images
 
   # finally we disable the Cinder LVM backend
   CinderEnableIscsiBackend: false

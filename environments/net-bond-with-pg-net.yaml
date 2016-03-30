@@ -1,0 +1,63 @@
+# This template configures each computes/controller to use a pair of bonded nics (nic2 and
+# nic3) and configures an IP address on each relevant isolated network with PLUMgrid
+# Management and Fabric networks
+
+resource_registry:
+  OS::TripleO::Compute::Net::SoftwareConfig: ../network/config/bond-with-pg-net/compute.yaml 
+  OS::TripleO::Controller::Net::SoftwareConfig: ../network/config/bond-with-pg-net/controller.yaml
+  OS::TripleO::Network::InternalApi: ../network/internal_api.yaml
+  OS::TripleO::Network::StorageMgmt: ../network/storage_mgmt.yaml
+  OS::TripleO::Network::Storage: ../network/storage.yaml
+  OS::TripleO::Network::Tenant: ../network/tenant.yaml
+  OS::TripleO::Network::PgMgmt: ../network/plumgrid_mgmt.yaml
+  OS::TripleO::Network::PgFabric: ../network/plumgrid_fabric.yaml
+
+  # Port assignments for the VIPs
+  OS::TripleO::Network::Ports::CtlplaneVipPort: ../network/ports/ctlplane_vip.yaml
+  OS::TripleO::Network::Ports::InternalApiVipPort: ../network/ports/internal_api.yaml
+  OS::TripleO::Network::Ports::StorageVipPort: ../network/ports/storage.yaml
+  OS::TripleO::Network::Ports::StorageMgmtVipPort: ../network/ports/storage_mgmt.yaml
+  OS::TripleO::Network::Ports::TenantVipPort: ../network/ports/tenant.yaml
+  
+  # Port assignments for the controller role
+  OS::TripleO::Controller::Ports::InternalApiPort: ../network/ports/internal_api.yaml
+  OS::TripleO::Controller::Ports::StoragePort: ../network/ports/storage.yaml
+  OS::TripleO::Controller::Ports::StorageMgmtPort: ../network/ports/storage_mgmt.yaml
+  OS::TripleO::Controller::Ports::TenantPort: ../network/ports/tenant.yaml
+  OS::TripleO::Controller::Ports::PgMgmtPort: ../network/ports/plumgrid_mgmt.yaml
+  OS::TripleO::Controller::Ports::PgFabricPort: ../network/ports/plumgrid_fabric.yaml
+  
+  # Port assignments for the compute role
+  OS::TripleO::Compute::Ports::InternalApiPort: ../network/ports/internal_api.yaml
+  OS::TripleO::Compute::Ports::StoragePort: ../network/ports/storage.yaml
+  OS::TripleO::Compute::Ports::TenantPort: ../network/ports/tenant.yaml
+  OS::TripleO::Compute::Ports::PgMgmtPort: ../network/ports/plumgrid_mgmt.yaml
+  OS::TripleO::Compute::Ports::PgFabricPort: ../network/ports/plumgrid_fabric.yaml
+
+parameter_defaults:
+  # Customize all these values to match the local environment
+  InternalApiNetCidr: 192.168.246.0/24
+  StorageNetCidr: 192.168.244.0/24
+  StorageMgmtNetCidr: 192.168.243.0/24
+  TenantNetCidr: 192.168.245.0/24
+  PgMgmtNetCidr: 192.168.247.0/24
+  PgFabricNetCidr: 192.168.241.0/24
+  # CIDR subnet mask length for provisioning network 
+  ControlPlaneSubnetCidr: '24'
+  InternalApiAllocationPools: [{'start': '192.168.246.50', 'end': '192.168.246.200'}]
+  StorageAllocationPools: [{'start': '192.168.244.50', 'end': '192.168.244.200'}]
+  StorageMgmtAllocationPools: [{'start': '192.168.243.50', 'end': '192.168.243.200'}]
+  TenantAllocationPools: [{'start': '192.168.245.50', 'end': '192.168.245.200'}]
+  PgMgmtAllocationPools: [{'start': '192.168.247.50', 'end': '192.168.247.200'}]
+  PgFabricAllocationPools: [{'start': '192.168.241.50', 'end': '192.168.241.200'}]
+  # Gateway router for the provisioning network (or Undercloud IP)
+  ControlPlaneDefaultRoute: 192.168.200.1
+  # Generally the IP of the Undercloud
+  EC2MetadataIp: 192.168.200.1
+  # Define the DNS servers (maximum 2) for the overcloud nodes
+  DnsServers: ["8.8.8.8","8.8.4.4"]
+  InternalApiNetworkVlanID: 246
+  StorageNetworkVlanID: 244
+  StorageMgmtNetworkVlanID: 243
+  TenantNetworkVlanID: 245
+  PgMgmtNetworkVlanID: 247

@@ -7,7 +7,7 @@ resource_registry:
 parameter_defaults:
   NeutronCorePlugin: neutron.plugins.plumgrid.plumgrid_plugin.plumgrid_plugin.NeutronPluginPLUMgridV2 
   NeutronMechanismDrivers: iovisor
-  PLUMgridDirectorServer: 192.168.73.40
+  PLUMgridDirectorServer: 127.0.0.1
   PLUMgridDirectorServerPort: 443
   PLUMgridUsername: plumgrid
   PLUMgridPassword: plumgrid
@@ -18,9 +18,9 @@ parameter_defaults:
  # PLUMgridNovaMetadataPort: 8775
 
  # Parameterd for PLUMgrid zone creation
-  PLUMgridRepoURL: http://192.168.73.5:81/yum
+  PLUMgridRepoURL: http://127.0.0.1:81/yum
   PLUMgridRepoComponent: fuji-413
-  PLUMgridNetwork: 192.168.73.0/24
+  PLUMgridNetwork: 127.0.0.1/24
   EnablePackageInstall: true
 
  # Use them for split management and fabric PLUMgrid network

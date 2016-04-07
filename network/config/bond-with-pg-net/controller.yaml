@@ -89,7 +89,7 @@ resources:
               name: bond0
               use_dhcp: false
               bonding_options: "mode=0"
-              defroute: true
+              defroute: false
               mtu: 1580
               addresses:
                -
@@ -110,47 +110,57 @@ resources:
 
             - type: linux_bridge
               name: br-intapi
+              mtu: 1500
               addresses:
                 - ip_netmask: {get_param: InternalApiIpSubnet}
               members:
               - type: vlan
                 device: bond0
+                mtu: 1500
                 vlan_id: {get_param: InternalApiNetworkVlanID}
 
             - type: linux_bridge
               name: br-storage
+              mtu: 1500
               addresses:
                 - ip_netmask: {get_param: StorageIpSubnet}
               members:
               - type: vlan
                 device: bond0
+                mtu: 1500
                 vlan_id: {get_param: StorageNetworkVlanID}
 
             - type: linux_bridge
               name: br-storagemgmt
+              mtu: 1500
               addresses:
                 - ip_netmask: {get_param: StorageMgmtIpSubnet}
               members:
               - type: vlan
                 device: bond0
+                mtu: 1500
                 vlan_id: {get_param: StorageMgmtNetworkVlanID}
 
             - type: linux_bridge
               name: br-tenant
+              mtu: 1500
               addresses: 
                 - ip_netmask: {get_param: TenantIpSubnet}
               members:
               - type: vlan
                 device: bond0
+                mtu: 1500
                 vlan_id: {get_param: TenantNetworkVlanID}
 
             - type: linux_bridge
               name: br-mgmt
+              mtu: 1500
               addresses:
                 - ip_netmask: {get_param: PgMgmtIpSubnet}
               members:
               - type: vlan
                 device: bond0
+                mtu: 1500
                 vlan_id: {get_param: PgMgmtNetworkVlanID}
 
 

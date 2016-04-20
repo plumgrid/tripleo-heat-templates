@@ -13,13 +13,13 @@ parameter_defaults:
   PLUMgridPassword: plumgrid
   PLUMgridServerTimeOut: 99
 
- # Optional paramaters for PLUMgrid neutron plugin
- # PLUMgridNovaMetadataIP: 169.254.169.254
- # PLUMgridNovaMetadataPort: 8775
+  PLUMgridNovaMetadataIP: 169.1.1.254
+  PLUMgridNovaMetadataPort: 8775
+  PLUMgridNovaMetadataSubnet: 169.1.1.254/30
 
  # Parameterd for PLUMgrid zone creation
   PLUMgridRepoURL: http://127.0.0.1:81/yum
-  PLUMgridRepoComponent: fuji-413
+  PLUMgridRepoComponent: godwin-430
   PLUMgridNetwork: 127.0.0.1/24
   EnablePackageInstall: true
 

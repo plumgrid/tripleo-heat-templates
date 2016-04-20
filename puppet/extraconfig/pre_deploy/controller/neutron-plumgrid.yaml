@@ -29,11 +29,15 @@ parameters:
   PLUMgridNovaMetadataIP:
     description: IP address of Nova Metadata
     type: string
-    default: 169.254.169.254
+    default: 169.1.1.254
   PLUMgridNovaMetadataPort:
     description: Port of Nova Metadata
     type: string
     default: 8775
+  PLUMgridNovaMetadataSubnet:
+    description: Subnet for PLUMgrid Metadata
+    type: string
+    default: 169.1.1.254/30
   PLUMgridRepoURL:
     description: URL for PLUMgrid Repository
     type: string
@@ -81,6 +85,7 @@ resources:
                 plumgrid_repo_component: {get_input: plumgrid_repo_component}
                 plumgrid_virtual_ip: {get_input: plumgrid_director_server}
                 plumgrid_network: {get_input: plumgrid_network}
+                plumgrid_nova_metadata_subnet: {get_input: plumgrid_nova_metadata_subnet}
 
   ControllerPLUMgridDeployment:
     type: OS::Heat::StructuredDeployment
@@ -99,6 +104,7 @@ resources:
         plumgrid_network: {get_param: PLUMgridNetwork}
         plumgrid_mgmt_dev: {get_param: PLUMgridMgmtDevControl}
         plumgrid_fabric_dev: {get_param: PLUMgridFabricDevControl}
+        plumgrid_nova_metadata_subnet: {get_param: PLUMgridNovaMetadataSubnet}
 
 outputs:
   deploy_stdout:

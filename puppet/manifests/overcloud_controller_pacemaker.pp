@@ -713,6 +713,15 @@ if hiera('step') >= 3 {
       ensure => stopped,
       enable => false,
     }
+
+    # Configure new parameters for pglib
+    $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.1.1.254/30')
+    exec { 'pg_lib metadata subnet':
+    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['::neutron'],
+    }
+
   
     # Install PLUMgrid Director
     class{'plumgrid':

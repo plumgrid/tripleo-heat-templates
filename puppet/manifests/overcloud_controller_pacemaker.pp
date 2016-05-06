@@ -37,7 +37,11 @@ $non_pcmk_start = hiera('step') >= 4
 
 if hiera('step') >= 1 {
 
+  create_resources(kmod::load, hiera('kernel_modules'), {})
   create_resources(sysctl::value, hiera('sysctl_settings'), {})
+  Exec <| tag == 'kmod::load' |>  -> Sysctl <| |>
+
+  include ::timezone
 
   if count(hiera('ntp::servers')) > 0 {
     include ::ntp
@@ -56,6 +60,12 @@ if hiera('step') >= 1 {
   }
 
   $pacemaker_cluster_members = downcase(regsubst(hiera('controller_node_names'), ',', ' ', 'G'))
+  $corosync_ipv6 = str2bool(hiera('corosync_ipv6', false))
+  if $corosync_ipv6 {
+    $cluster_setup_extras     = { '--ipv6' => '' }
+  } else {
+    $cluster_setup_extras     = {}
+  }
   user { 'hacluster':
    ensure => present,
   } ->
@@ -63,14 +73,15 @@ if hiera('step') >= 1 {
     hacluster_pwd => hiera('hacluster_pwd'),
   } ->
   class { '::pacemaker::corosync':
-    cluster_members => $pacemaker_cluster_members,
-    setup_cluster   => $pacemaker_master,
+    cluster_members      => $pacemaker_cluster_members,
+    setup_cluster        => $pacemaker_master,
+    cluster_setup_extras => $cluster_setup_extras,
   }
   class { '::pacemaker::stonith':
     disable => true,
   }
 
-  # FIXME(gfidente): sets 100secs as default start timeout op
+  # FIXME(gfidente): sets 200secs as default start timeout op
   # param; until we can use pcmk global defaults we'll still
   # need to add it to every resource which redefines op params
   Pacemaker::Resource::Service {
@@ -81,12 +92,21 @@ if hiera('step') >= 1 {
   # avoid races where non-master nodes attempt to start without
   # config (eg. binding on 0.0.0.0)
   # The module ignores erlang_cookie if cluster_config is false
+  $rabbit_ipv6 = str2bool(hiera('rabbit_ipv6', false))
+  if $rabbit_ipv6 {
+      $rabbit_env = merge(hiera('rabbitmq_environment'), {
+        'RABBITMQ_SERVER_START_ARGS' => '"-proto_dist inet6_tcp"'
+      })
+  } else {
+    $rabbit_env = hiera('rabbitmq_environment')
+  }
+
   class { '::rabbitmq':
     service_manage          => false,
     tcp_keepalive           => false,
     config_kernel_variables => hiera('rabbitmq_kernel_variables'),
     config_variables        => hiera('rabbitmq_config_variables'),
-    environment_variables   => hiera('rabbitmq_environment'),
+    environment_variables   => $rabbit_env,
   } ->
   file { '/var/lib/rabbitmq/.erlang.cookie':
     ensure  => 'present',
@@ -123,6 +143,11 @@ if hiera('step') >= 1 {
   }
   $galera_nodes = downcase(hiera('galera_node_names', $::hostname))
 
+  # FIXME: due to https://bugzilla.redhat.com/show_bug.cgi?id=1298671 we
+  # set bind-address to a hostname instead of an ip address; to move Mysql
+  # from internal_api on another network we'll have to customize both
+  # MysqlNetwork and ControllerHostnameResolveNetwork in ServiceNetMap
+  $mysql_bind_host = hiera('mysql_bind_host')
   $mysqld_options = {
     'mysqld' => {
       'skip-name-resolve'             => '1',
@@ -132,7 +157,7 @@ if hiera('step') >= 1 {
       'innodb_locks_unsafe_for_binlog'=> '1',
       'query_cache_size'              => '0',
       'query_cache_type'              => '0',
-      'bind-address'                  => hiera('mysql_bind_host'),
+      'bind-address'                  => $::hostname,
       'max_connections'               => hiera('mysql_max_connections'),
       'open_files_limit'              => '-1',
       'wsrep_provider'                => '/usr/lib64/galera/libgalera_smm.so',
@@ -149,6 +174,7 @@ if hiera('step') >= 1 {
       'wsrep_causal_reads'            => '0',
       'wsrep_notify_cmd'              => '',
       'wsrep_sst_method'              => 'rsync',
+      'wsrep_provider_options'        => "gmcast.listen_addr=tcp://[${mysql_bind_host}]:4567;",
     }
   }
 
@@ -168,7 +194,15 @@ if hiera('step') >= 2 {
 
   # NOTE(gfidente): the following vars are needed on all nodes so they
   # need to stay out of pacemaker_master conditional
-  $mongo_node_ips_with_port = suffix(hiera('mongo_node_ips'), ':27017')
+  if str2bool(hiera('mongodb::server::ipv6', false)) {
+    $mongo_node_ips_with_port_prefixed = prefix(hiera('mongo_node_ips'), '[')
+    $mongo_node_ips_with_port = suffix($mongo_node_ips_with_port_prefixed, ']:27017')
+    $mongo_node_ips_with_port_nobr = suffix(hiera('mongo_node_ips'), ':27017')
+  } else {
+    $mongo_node_ips_with_port = suffix(hiera('mongo_node_ips'), ':27017')
+    $mongo_node_ips_with_port_nobr = suffix(hiera('mongo_node_ips'), ':27017')
+  }
+  $mongo_node_ips = hiera('mongo_node_ips')
   $mongodb_replset = hiera('mongodb::server::replset')
 
   if $pacemaker_master {
@@ -186,8 +220,14 @@ if hiera('step') >= 2 {
       }
 
       $control_vip = hiera('tripleo::loadbalancer::controller_virtual_ip')
+      if is_ipv6_address($control_vip) {
+        $control_vip_netmask = '64'
+      } else {
+        $control_vip_netmask = '32'
+      }
       pacemaker::resource::ip { 'control_vip':
-        ip_address => $control_vip,
+        ip_address   => $control_vip,
+        cidr_netmask => $control_vip_netmask,
       }
       pacemaker::constraint::base { 'control_vip-then-haproxy':
         constraint_type   => 'order',
@@ -208,9 +248,15 @@ if hiera('step') >= 2 {
       }
 
       $public_vip = hiera('tripleo::loadbalancer::public_virtual_ip')
+      if is_ipv6_address($public_vip) {
+        $public_vip_netmask = '64'
+      } else {
+        $public_vip_netmask = '32'
+      }
       if $public_vip and $public_vip != $control_vip {
         pacemaker::resource::ip { 'public_vip':
-          ip_address => $public_vip,
+          ip_address   => $public_vip,
+          cidr_netmask => $public_vip_netmask,
         }
         pacemaker::constraint::base { 'public_vip-then-haproxy':
           constraint_type   => 'order',
@@ -232,9 +278,15 @@ if hiera('step') >= 2 {
       }
 
       $redis_vip = hiera('redis_vip')
+      if is_ipv6_address($redis_vip) {
+        $redis_vip_netmask = '64'
+      } else {
+        $redis_vip_netmask = '32'
+      }
       if $redis_vip and $redis_vip != $control_vip {
         pacemaker::resource::ip { 'redis_vip':
-          ip_address => $redis_vip,
+          ip_address   => $redis_vip,
+          cidr_netmask => $redis_vip_netmask,
         }
         pacemaker::constraint::base { 'redis_vip-then-haproxy':
           constraint_type   => 'order',
@@ -256,9 +308,15 @@ if hiera('step') >= 2 {
       }
 
       $internal_api_vip = hiera('tripleo::loadbalancer::internal_api_virtual_ip')
+      if is_ipv6_address($internal_api_vip) {
+        $internal_api_vip_netmask = '64'
+      } else {
+        $internal_api_vip_netmask = '32'
+      }
       if $internal_api_vip and $internal_api_vip != $control_vip {
         pacemaker::resource::ip { 'internal_api_vip':
-          ip_address => $internal_api_vip,
+          ip_address   => $internal_api_vip,
+          cidr_netmask => $internal_api_vip_netmask,
         }
         pacemaker::constraint::base { 'internal_api_vip-then-haproxy':
           constraint_type   => 'order',
@@ -280,9 +338,15 @@ if hiera('step') >= 2 {
       }
 
       $storage_vip = hiera('tripleo::loadbalancer::storage_virtual_ip')
+      if is_ipv6_address($storage_vip) {
+        $storage_vip_netmask = '64'
+      } else {
+        $storage_vip_netmask = '32'
+      }
       if $storage_vip and $storage_vip != $control_vip {
         pacemaker::resource::ip { 'storage_vip':
-          ip_address => $storage_vip,
+          ip_address   => $storage_vip,
+          cidr_netmask => $storage_vip_netmask,
         }
         pacemaker::constraint::base { 'storage_vip-then-haproxy':
           constraint_type   => 'order',
@@ -304,9 +368,15 @@ if hiera('step') >= 2 {
       }
 
       $storage_mgmt_vip = hiera('tripleo::loadbalancer::storage_mgmt_virtual_ip')
+      if is_ipv6_address($storage_mgmt_vip) {
+        $storage_mgmt_vip_netmask = '64'
+      } else {
+        $storage_mgmt_vip_netmask = '32'
+      }
       if $storage_mgmt_vip and $storage_mgmt_vip != $control_vip {
         pacemaker::resource::ip { 'storage_mgmt_vip':
-          ip_address => $storage_mgmt_vip,
+          ip_address   => $storage_mgmt_vip,
+          cidr_netmask => $storage_mgmt_vip_netmask,
         }
         pacemaker::constraint::base { 'storage_mgmt_vip-then-haproxy':
           constraint_type   => 'order',
@@ -350,11 +420,12 @@ if hiera('step') >= 2 {
       # NOTE (spredzy) : The replset can only be run
       # once all the nodes have joined the cluster.
       mongodb_conn_validator { $mongo_node_ips_with_port :
+        server  => $mongo_node_ips,
         require => Pacemaker::Resource::Service[$::mongodb::params::service_name],
         before  => Mongodb_replset[$mongodb_replset],
       }
       mongodb_replset { $mongodb_replset :
-        members => $mongo_node_ips_with_port,
+        members => $mongo_node_ips_with_port_nobr,
       }
     }
 
@@ -408,71 +479,28 @@ MYSQL_HOST=localhost\n",
   }
 
   # Create all the database schemas
-  # Example DSN format: mysql://user:password@host/dbname
   if $sync_db {
-    $allowed_hosts = ['%',hiera('mysql_bind_host')]
-    $keystone_dsn = split(hiera('keystone::database_connection'), '[@:/?]')
     class { 'keystone::db::mysql':
-      user          => $keystone_dsn[3],
-      password      => $keystone_dsn[4],
-      host          => $keystone_dsn[5],
-      dbname        => $keystone_dsn[6],
-      allowed_hosts => $allowed_hosts,
       require       => Exec['galera-ready'],
     }
-    $glance_dsn = split(hiera('glance::api::database_connection'), '[@:/?]')
     class { 'glance::db::mysql':
-      user          => $glance_dsn[3],
-      password      => $glance_dsn[4],
-      host          => $glance_dsn[5],
-      dbname        => $glance_dsn[6],
-      allowed_hosts => $allowed_hosts,
       require       => Exec['galera-ready'],
     }
-    $nova_dsn = split(hiera('nova::database_connection'), '[@:/?]')
     class { 'nova::db::mysql':
-      user          => $nova_dsn[3],
-      password      => $nova_dsn[4],
-      host          => $nova_dsn[5],
-      dbname        => $nova_dsn[6],
-      allowed_hosts => $allowed_hosts,
       require       => Exec['galera-ready'],
     }
-    $neutron_dsn = split(hiera('neutron::server::database_connection'), '[@:/?]')
     class { 'neutron::db::mysql':
-      user          => $neutron_dsn[3],
-      password      => $neutron_dsn[4],
-      host          => $neutron_dsn[5],
-      dbname        => $neutron_dsn[6],
-      allowed_hosts => $allowed_hosts,
       require       => Exec['galera-ready'],
     }
-    $cinder_dsn = split(hiera('cinder::database_connection'), '[@:/?]')
     class { 'cinder::db::mysql':
-      user          => $cinder_dsn[3],
-      password      => $cinder_dsn[4],
-      host          => $cinder_dsn[5],
-      dbname        => $cinder_dsn[6],
-      allowed_hosts => $allowed_hosts,
       require       => Exec['galera-ready'],
     }
-    $heat_dsn = split(hiera('heat::database_connection'), '[@:/?]')
     class { 'heat::db::mysql':
-      user          => $heat_dsn[3],
-      password      => $heat_dsn[4],
-      host          => $heat_dsn[5],
-      dbname        => $heat_dsn[6],
-      allowed_hosts => $allowed_hosts,
       require       => Exec['galera-ready'],
     }
+
     if downcase(hiera('ceilometer_backend')) == 'mysql' {
-      $ceilometer_dsn = split(hiera('ceilometer_mysql_conn_string'), '[@:/?]')
       class { 'ceilometer::db::mysql':
-        user          => $ceilometer_dsn[3],
-        password      => $ceilometer_dsn[4],
-        host          => $ceilometer_dsn[5],
-        dbname        => $ceilometer_dsn[6],
-        allowed_hosts => $allowed_hosts,
         require       => Exec['galera-ready'],
       }
     }
@@ -485,8 +513,15 @@ MYSQL_HOST=localhost\n",
   $enable_ceph = hiera('ceph_storage_count', 0) > 0
 
   if $enable_ceph {
-    class { 'ceph::profile::params':
-      mon_initial_members => downcase(hiera('ceph_mon_initial_members'))
+    $mon_initial_members = downcase(hiera('ceph_mon_initial_members'))
+    if str2bool(hiera('ceph_ipv6', false)) {
+      $mon_host = hiera('ceph_mon_host_v6')
+    } else {
+      $mon_host = hiera('ceph_mon_host')
+    }
+    class { '::ceph::profile::params':
+      mon_initial_members => $mon_initial_members,
+      mon_host            => $mon_host,
     }
     include ::ceph::profile::mon
   }
@@ -510,6 +545,14 @@ MYSQL_HOST=localhost\n",
   }
 
   if str2bool(hiera('enable_external_ceph', 'false')) {
+    if str2bool(hiera('ceph_ipv6', false)) {
+      $mon_host = hiera('ceph_mon_host_v6')
+    } else {
+      $mon_host = hiera('ceph_mon_host')
+    }
+    class { '::ceph::profile::params':
+      mon_host            => $mon_host,
+    }
     include ::ceph::profile::client
   }
 
@@ -576,12 +619,22 @@ if hiera('step') >= 3 {
     }
   }
 
+  # # https://bugzilla.redhat.com/show_bug.cgi?id=1299855#c5
+  $glance_ipv6 = str2bool(hiera('glance_ipv6', false))
+  $glance_registry_network = hiera('glance_registry_network')
+  if $glance_ipv6 {
+    $glance_registry_network_real = "[${glance_registry_network}]"
+  } else {
+    $glance_registry_network_real = $glance_registry_network
+  }
+
   # TODO: notifications, scrubber, etc.
   include ::glance
   class { 'glance::api':
-    known_stores => $glance_store,
+    known_stores   => $glance_store,
     manage_service => false,
-    enabled => false,
+    enabled        => false,
+    registry_host  => $glance_registry_network_real,
   }
   class { '::glance::registry' :
     sync_db => $sync_db,
@@ -590,8 +643,16 @@ if hiera('step') >= 3 {
   }
   include join(['::glance::backend::', $glance_backend])
 
+  $memcached_ipv6 = str2bool(hiera('memcached_ipv6', false))
+  if $memcached_ipv6 {
+    $cache_server_ip_real = hiera('memcache_node_ips_v6', '[::1]')
+  } else {
+    $cache_server_ip_real = hiera('memcache_node_ips', '127.0.0.1')
+  }
+  $memcached_servers_real = suffix($cache_server_ip_real, ':11211')
+
   class { '::nova' :
-    memcached_servers => suffix(hiera('memcache_node_ips'), ':11211'),
+    memcached_servers => $memcached_servers_real
   }
 
   class { '::nova::api' :
@@ -801,6 +862,8 @@ if hiera('step') >= 3 {
   }
 
   include ::cinder
+  include ::tripleo::ssl::cinder_config
+  include ::cinder::config
   class { '::cinder::api':
     sync_db => $sync_db,
     manage_service => false,
@@ -863,10 +926,6 @@ if hiera('step') >= 3 {
 
   if hiera('cinder_enable_netapp_backend', false) {
     $cinder_netapp_backend = hiera('cinder::backend::netapp::title')
-
-    cinder_config {
-      "${cinder_netapp_backend}/host": value => 'hostgroup';
-    }
 
     if hiera('cinder::backend::netapp::nfs_shares', undef) {
       $cinder_netapp_nfs_shares = split(hiera('cinder::backend::netapp::nfs_shares', undef), ',')
@@ -1033,12 +1092,14 @@ if hiera('step') >= 3 {
   }
 
   # httpd/apache and horizon
-  include ::apache
+  # NOTE(gfidente): server-status can be consumed by the pacemaker resource agent
+  class { '::apache' :
+    service_enable => false,
+    # service_manage => false, # <-- not supported with horizon&apache mod_wsgi?
+  }
   class { '::apache::mod::status':
     allow_from => ['127.0.0.1'],
   }
-  # Horizon
-  include ::apache::mod::status
   if 'cisco_n1kv' in hiera('neutron_mechanism_drivers') {
     $_profile_support = 'cisco'
   } else {
@@ -1050,7 +1111,7 @@ if hiera('step') >= 3 {
     priority   => 10,
   }
   class { 'horizon':
-    cache_server_ip    => hiera('memcache_node_ips', '127.0.0.1'),
+    cache_server_ip    => $cache_server_ip_real,
     vhost_extra_params => $vhost_params,
     server_aliases     => $::hostname,
     neutron_options    => $neutron_options,
@@ -1065,6 +1126,8 @@ if hiera('step') >= 3 {
     agentaddress => ['udp:161','udp6:[::1]:161'],
     snmpd_config => [ join(['rouser ', hiera('snmpd_readonly_user_name')]), 'proc  cron', 'includeAllDisks  10%', 'master agentx', 'trapsink localhost public', 'iquerySecName internalUser', 'rouser internalUser', 'defaultMonitors yes', 'linkUpDownNotifications yes' ],
   }
+
+  hiera_include('controller_classes')
 
 } #END STEP 3
 
@@ -1375,25 +1438,25 @@ if hiera('step') >= 4 {
 
     # Nova
     pacemaker::resource::service { $::nova::params::api_service_name :
-      clone_params    => "interleave=true",
-      op_params       => "start timeout=200s stop timeout=200s monitor start-delay=10s",
+      clone_params => 'interleave=true',
+      op_params    => 'start timeout=200s stop timeout=200s monitor start-delay=10s',
     }
     pacemaker::resource::service { $::nova::params::conductor_service_name :
-      clone_params    => "interleave=true",
-      op_params       => "start timeout=200s stop timeout=200s monitor start-delay=10s",
+      clone_params => 'interleave=true',
+      op_params    => 'start timeout=200s stop timeout=200s monitor start-delay=10s',
     }
     pacemaker::resource::service { $::nova::params::consoleauth_service_name :
-      clone_params    => "interleave=true",
-      op_params       => "start timeout=200s stop timeout=200s monitor start-delay=10s",
-      require         => Pacemaker::Resource::Service[$::keystone::params::service_name],
+      clone_params => 'interleave=true',
+      op_params    => 'start timeout=200s stop timeout=200s monitor start-delay=10s',
+      require      => Pacemaker::Resource::Service[$::keystone::params::service_name],
     }
     pacemaker::resource::service { $::nova::params::vncproxy_service_name :
-      clone_params    => "interleave=true",
-      op_params       => "start timeout=200s stop timeout=200s monitor start-delay=10s",
+      clone_params => 'interleave=true',
+      op_params    => 'start timeout=200s stop timeout=200s monitor start-delay=10s',
     }
     pacemaker::resource::service { $::nova::params::scheduler_service_name :
-      clone_params    => "interleave=true",
-      op_params       => "start timeout=200s stop timeout=200s monitor start-delay=10s",
+      clone_params => 'interleave=true',
+      op_params    => 'start timeout=200s stop timeout=200s monitor start-delay=10s',
     }
 
     pacemaker::constraint::base { 'keystone-then-nova-consoleauth-constraint':

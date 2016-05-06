@@ -15,11 +15,15 @@
 
 include tripleo::packages
 
+create_resources(kmod::load, hiera('kernel_modules'), {})
 create_resources(sysctl::value, hiera('sysctl_settings'), {})
+Exec <| tag == 'kmod::load' |>  -> Sysctl <| |>
 
 if count(hiera('ntp::servers')) > 0 {
   include ::ntp
 }
+
+include ::timezone
 
 file { ['/etc/libvirt/qemu/networks/autostart/default.xml',
         '/etc/libvirt/qemu/networks/default.xml']:
@@ -34,6 +38,20 @@ exec { 'libvirt-default-net-destroy':
   before => Service['libvirt'],
 }
 
+# When utilising images for deployment, we need to reset the iSCSI initiator name to make it unique
+exec { 'reset-iscsi-initiator-name':
+  command => '/bin/echo InitiatorName=$(/usr/sbin/iscsi-iname) > /etc/iscsi/initiatorname.iscsi',
+  onlyif  => '/usr/bin/test ! -f /etc/iscsi/.initiator_reset',
+}->
+
+file { '/etc/iscsi/.initiator_reset':
+  ensure => present,
+} ~>
+service{"iscsid":
+  ensure => 'running',
+} ~>
+Service["nova-compute"]
+
 include ::nova
 include ::nova::config
 include ::nova::compute
@@ -45,6 +63,14 @@ nova_config {
 
 $nova_enable_rbd_backend = hiera('nova_enable_rbd_backend', false)
 if $nova_enable_rbd_backend {
+  if str2bool(hiera('ceph_ipv6', false)) {
+    $mon_host = hiera('ceph_mon_host_v6')
+  } else {
+    $mon_host = hiera('ceph_mon_host')
+  }
+  class { '::ceph::profile::params':
+    mon_host            => $mon_host,
+  }
   include ::ceph::profile::client
 
   $client_keys = hiera('ceph::profile::params::client_keys')
@@ -65,7 +91,15 @@ if hiera('cinder_enable_nfs_backend', false) {
   package {'nfs-utils': } -> Service['nova-compute']
 }
 
-include ::nova::compute::libvirt
+$nova_ipv6 = str2bool(hiera('nova::use_ipv6', false))
+if $nova_ipv6 {
+  $vncserver_listen = '::0'
+} else {
+  $vncserver_listen = '0.0.0.0'
+}
+class { '::nova::compute::libvirt' :
+  vncserver_listen => $vncserver_listen,
+}
 include ::nova::network::neutron
 include ::neutron
 
@@ -145,12 +179,12 @@ if 'iovisor' in hiera('neutron_mechanism_drivers') {
 
 } else {
 
-  class { 'neutron::plugins::ml2':
+  class { '::neutron::plugins::ml2':
     flat_networks        => split(hiera('neutron_flat_networks'), ','),
     tenant_network_types => [hiera('neutron_tenant_network_type')],
   }
 
-  class { 'neutron::agents::ml2::ovs':
+  class { '::neutron::agents::ml2::ovs':
     bridge_mappings => split(hiera('neutron_bridge_mappings'), ','),
     tunnel_types    => split(hiera('neutron_tunnel_types'), ','),
   }
@@ -158,7 +192,7 @@ if 'iovisor' in hiera('neutron_mechanism_drivers') {
 }
 
 if 'cisco_n1kv' in hiera('neutron_mechanism_drivers') {
-  class { 'neutron::agents::n1kv_vem':
+  class { '::neutron::agents::n1kv_vem':
     n1kv_source          => hiera('n1kv_vem_source', undef),
     n1kv_version         => hiera('n1kv_vem_version', undef),
   }
@@ -180,3 +214,4 @@ class { 'snmp':
 }
 
 package_manifest{'/var/lib/tripleo/installed-packages/overcloud_compute': ensure => present}
+hiera_include('compute_classes')

@@ -13,3 +13,4 @@ ceph_pools:
   - "%{hiera('glance::backend::rbd::rbd_store_pool')}"
 
 ceph_osd_selinux_permissive: true
+ceph_classes: []

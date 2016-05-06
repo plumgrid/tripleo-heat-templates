@@ -42,7 +42,7 @@ if [[ "$list_updates" == "" ]]; then
 fi
 
 command=${command:-update}
-full_command="yum -y $command $command_arguments"
+full_command="yum -q -y $command $command_arguments"
 echo "Running: $full_command"
 
 result=$($full_command)

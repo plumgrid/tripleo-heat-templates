@@ -103,7 +103,7 @@ resources:
                     ip_netmask: {get_param: ExternalIpSubnet}
                   routes:
                     -
-                      ip_netmask: 0.0.0.0/0
+                      default: true
                       next_hop: {get_param: ExternalInterfaceDefaultRoute}
                 -
                   type: vlan

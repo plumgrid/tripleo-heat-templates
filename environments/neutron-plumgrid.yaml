@@ -36,3 +36,9 @@ parameter_defaults:
  # PLUMgridFabricDevControl: bond0
  # PLUMgridMgmtDevCompute: br-mgmt
  # PLUMgridFabricDevCompute: bond0
+
+# PLUMgrid doesn't require dhcp, l3, ovs and metadata agents
+  NeutronEnableDHCPAgent: false
+  NeutronEnableL3Agent: false
+  NeutronEnableMetadataAgent: false
+  NeutronEnableOVSAgent: false

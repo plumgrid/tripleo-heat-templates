@@ -15,11 +15,15 @@
 
 include tripleo::packages
 
+create_resources(kmod::load, hiera('kernel_modules'), {})
 create_resources(sysctl::value, hiera('sysctl_settings'), {})
+Exec <| tag == 'kmod::load' |>  -> Sysctl <| |>
 
 if count(hiera('ntp::servers')) > 0 {
   include ::ntp
 }
+
+include ::timezone
 
 include ::swift
 class {'swift::storage::all':
@@ -49,3 +53,4 @@ class { 'snmp':
 }
 
 package_manifest{'/var/lib/tripleo/installed-packages/overcloud_object': ensure => present}
+hiera_include('object_classes')

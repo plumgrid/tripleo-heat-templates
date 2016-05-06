@@ -93,6 +93,10 @@ parameters:
     default: 'br-ex'
     description: Interface where virtual ip will be assigned.
     type: string
+  CorosyncIPv6:
+    default: false
+    description: Enable IPv6 in Corosync
+    type: boolean
   Debug:
     default: ''
     description: Set to True to enable debugging on all services.
@@ -142,14 +146,6 @@ parameters:
     description: The password for the glance service and db account, used by the glance services.
     type: string
     hidden: true
-  GlancePort:
-    default: "9292"
-    description: Glance port.
-    type: string
-  GlanceProtocol:
-    default: http
-    description: Protocol to use when connecting to glance, set to https for SSL.
-    type: string
   GlanceBackend:
     default: swift
     description: The short name of the Glance backend to use. Should be one
@@ -181,6 +177,10 @@ parameters:
       Mount options for Pacemaker mount used as Glance storage.
       Effective when GlanceFilePcmkManage is true.
     type: string
+  GlanceIPv6:
+    default: false
+    description: Enable IPv6 in Glance
+    type: boolean
   HeatPassword:
     default: unset
     description: The password for the Heat service and db account, used by the Heat services.
@@ -205,6 +205,10 @@ parameters:
   ImageUpdatePolicy:
     default: 'REBUILD_PRESERVE_EPHEMERAL'
     description: What policy to use when reconstructing instances. REBUILD for rebuilds, REBUILD_PRESERVE_EPHEMERAL to preserve /mnt.
+    type: string
+  InstanceNameTemplate:
+    default: 'instance-%08x'
+    description: Template string to be used to generate instance names
     type: string
   KeyName:
     default: default
@@ -244,6 +248,10 @@ parameters:
     type: string
     constraints:
       - allowed_values: [ 'basic', 'cadf' ]
+  MemcachedIPv6:
+    default: false
+    description: Enable IPv6 in Memcached
+    type: boolean
   MysqlClusterUniquePart:
     description: A unique identifier of the MySQL cluster the controller is in.
     type: string
@@ -284,6 +292,22 @@ parameters:
     default: 'dhcp-option-force=26,1400'
     description: Dnsmasq options for neutron-dhcp-agent. The default value here forces MTU to be set to 1400 to account for the gre tunnel overhead.
     type: string
+  NeutronEnableDHCPAgent:
+    description: Knob to enable/disable DHCP Agent
+    type: boolean
+    default: false
+  NeutronEnableL3Agent:
+    description: Knob to enable/disable L3 agent
+    type: boolean
+    default: false
+  NeutronEnableMetadataAgent:
+    description: Knob to enable/disable Metadata agent
+    type: boolean
+    default: false
+  NeutronEnableOVSAgent:
+    description: Knob to enable/disable OVS Agent
+    type: boolean
+    default: false
   NeutronAgentMode:
     default: 'dvr_snat'
     description: Agent mode for the neutron-l3-agent on the controller hosts
@@ -402,6 +426,10 @@ parameters:
         of VXLAN VNI IDs that are available for tenant network allocation
     default: "1:1000"
     type: comma_delimited_list
+  NovaIPv6:
+    default: false
+    description: Enable IPv6 features in Nova
+    type: boolean
   NovaPassword:
     default: unset
     description: The password for the nova service and db account, used by nova-api.
@@ -410,6 +438,10 @@ parameters:
   NovaApiVirtualIP:
     type: string
     default: ''
+  MongoDbIPv6:
+    default: false
+    description: Enable IPv6 if Mongo DB VIP is IPv6
+    type: boolean
   NtpServer:
     type: string
     default: ''
@@ -452,9 +484,17 @@ parameters:
     default: 4096
     description: Configures RabbitMQ FD limit
     type: string
+  RabbitIPv6:
+    default: false
+    description: Enable IPv6 in RabbitMQ
+    type: boolean
   RedisVirtualIP:
     type: string
     default: ''  # Has to be here because of the ignored empty value bug
+  RedisVirtualIPUri:
+    type: string
+    default: ''  # Has to be here because of the ignored empty value bug
+    description: An IP address which is wrapped in brackets in case of IPv6
   SnmpdReadonlyUserName:
     default: ro_snmp_user
     description: The user name for SNMPd with readonly rights running on all Overcloud nodes
@@ -462,20 +502,6 @@ parameters:
   SnmpdReadonlyUserPassword:
     default: unset
     description: The user password for SNMPd with readonly rights running on all Overcloud nodes
-    type: string
-    hidden: true
-  SSLCACertificate:
-    default: ''
-    description: If set, the contents of an SSL certificate authority file.
-    type: string
-  SSLCertificate:
-    default: ''
-    description: If set, the contents of an SSL certificate .crt file for encrypting SSL endpoints.
-    type: string
-    hidden: true
-  SSLKey:
-    default: ''
-    description: If set, the contents of an SSL certificate .key file for encrypting SSL endpoints.
     type: string
     hidden: true
   SwiftHashSuffix:
@@ -506,16 +532,26 @@ parameters:
     type: number
     default: 3
     description: How many replicas to use in the swift rings.
+  TimeZone:
+    default: 'UTC'
+    description: The timezone to be set on controller nodes.
+    type: string
   VirtualIP: # DEPRECATED: use per service settings instead
     type: string
     default: ''  # Has to be here because of the ignored empty value bug
   HeatApiVirtualIP:
     type: string
     default: ''
+  HeatApiVirtualIPUri:
+    type: string
+    default: ''
   GlanceApiVirtualIP:
     type: string
     default: ''
   MysqlVirtualIP:
+    type: string
+    default: ''
+  MysqlVirtualIPUri:
     type: string
     default: ''
   KeystoneAdminApiVirtualIP:
@@ -536,6 +572,11 @@ parameters:
     description: Mapping of service_name -> network name. Typically set
                  via parameter_defaults in the resource registry.
     type: json
+  EndpointMap:
+    default: {}
+    description: Mapping of service endpoint -> protocol. Typically set
+                 via parameter_defaults in the resource registry.
+    type: json
   UpdateIdentifier:
     default: ''
     type: string
@@ -553,6 +594,15 @@ parameters:
     description: >
       Heat action when to apply network configuration changes
     default: ['CREATE']
+  NodeIndex:
+    type: number
+    default: 0
+  CloudDomain:
+    default: ''
+    type: string
+    description: >
+      The DNS domain used for the hosts. This should match the dhcp_domain
+      configured in the Undercloud neutron. Defaults to localdomain.
 
 resources:
 
@@ -626,12 +676,17 @@ resources:
     properties:
       ControlPlaneIp: {get_attr: [Controller, networks, ctlplane, 0]}
       ExternalIp: {get_attr: [ExternalPort, ip_address]}
+      ExternalIpUri: {get_attr: [ExternalPort, ip_address_uri]}
       InternalApiIp: {get_attr: [InternalApiPort, ip_address]}
+      InternalApiIpUri: {get_attr: [InternalApiPort, ip_address_uri]}
       StorageIp: {get_attr: [StoragePort, ip_address]}
+      StorageIpUri: {get_attr: [StoragePort, ip_address_uri]}
       StorageMgmtIp: {get_attr: [StorageMgmtPort, ip_address]}
+      StorageMgmtIpUri: {get_attr: [StorageMgmtPort, ip_address_uri]}
       TenantIp: {get_attr: [TenantPort, ip_address]}
       PgMgmtIp: {get_attr: [PgMgmtPort, ip_address]}
       PgFabricIp: {get_attr: [PgFabricPort, ip_address]}
+      TenantIpUri: {get_attr: [TenantPort, ip_address_uri]}
 
   NetIpSubnetMap:
     type: OS::TripleO::Network::Ports::NetIpSubnetMap
@@ -667,6 +722,21 @@ resources:
         bridge_name: br-ex
         interface_name: {get_param: NeutronPublicInterface}
 
+  # Resource for site-specific injection of root certificate
+  NodeTLSCAData:
+    depends_on: NetworkDeployment
+    type: OS::TripleO::NodeTLSCAData
+    properties:
+      server: {get_resource: Controller}
+
+  # Resource for site-specific passing of private keys/certificates
+  NodeTLSData:
+    depends_on: NodeTLSCAData
+    type: OS::TripleO::NodeTLSData
+    properties:
+      server: {get_resource: Controller}
+      NodeIndex: {get_param: NodeIndex}
+
   ControllerDeployment:
     type: OS::TripleO::SoftwareDeployment
     depends_on: NetworkDeployment
@@ -680,19 +750,19 @@ resources:
           list_join:
             - ''
             - - 'http://'
-              - {get_param: HeatApiVirtualIP}
+              - {get_param: HeatApiVirtualIPUri}
               - ':8003'
         heat.metadata_server_url:
           list_join:
             - ''
             - - 'http://'
-              - {get_param: HeatApiVirtualIP}
+              - {get_param: HeatApiVirtualIPUri}
               - ':8000'
         heat.waitcondition_server_url:
           list_join:
             - ''
             - - 'http://'
-              - {get_param: HeatApiVirtualIP}
+              - {get_param: HeatApiVirtualIPUri}
               - ':8000/v1/waitcondition'
         heat_auth_encryption_key: {get_param: HeatAuthEncryptionKey}
         horizon_secret: {get_param: HorizonSecret}
@@ -722,9 +792,9 @@ resources:
             - - 'mysql://cinder:'
               - {get_param: CinderPassword}
               - '@'
-              - {get_param: MysqlVirtualIP}
+              - {get_param: MysqlVirtualIPUri}
               - '/cinder'
-        glance_port: {get_param: GlancePort}
+        glance_port: {get_param: [EndpointMap, GlanceInternal, port]}
         glance_password: {get_param: GlancePassword}
         glance_backend: {get_param: GlanceBackend}
         glance_file_pcmk_device: {get_param: GlanceFilePcmkDevice}
@@ -739,7 +809,7 @@ resources:
             - - 'mysql://glance:'
               - {get_param: GlancePassword}
               - '@'
-              - {get_param: MysqlVirtualIP}
+              - {get_param: MysqlVirtualIPUri}
               - '/glance'
         heat_password: {get_param: HeatPassword}
         heat_stack_domain_admin_password: {get_param: HeatStackDomainAdminPassword}
@@ -749,9 +819,8 @@ resources:
             - - 'mysql://heat:'
               - {get_param: HeatPassword}
               - '@'
-              - {get_param: MysqlVirtualIP}
+              - {get_param: MysqlVirtualIPUri}
               - '/heat'
-        keystone_auth_address: {list_join: ['', ['http://', {get_param: KeystonePublicApiVirtualIP} , ':5000/v2.0']]}
         keystone_ca_certificate: {get_param: KeystoneCACertificate}
         keystone_signing_key: {get_param: KeystoneSigningKey}
         keystone_signing_certificate: {get_param: KeystoneSigningCertificate}
@@ -765,26 +834,13 @@ resources:
             - - 'mysql://keystone:'
               - {get_param: AdminToken}
               - '@'
-              - {get_param: MysqlVirtualIP}
+              - {get_param: MysqlVirtualIPUri}
               - '/keystone'
-        keystone_identity_uri:
-          list_join:
-            - ''
-            - - 'http://'
-              - {get_param: KeystoneAdminApiVirtualIP}
-              - ':35357/'
-        keystone_auth_uri:
-          list_join:
-            - ''
-            - - 'http://'
-              - {get_param: KeystonePublicApiVirtualIP}
-              - ':5000/v2.0/'
-        keystone_ec2_uri:
-          list_join:
-            - ''
-            - - 'http://'
-              - {get_param: KeystonePublicApiVirtualIP}
-              - ':5000/v2.0/ec2tokens'
+        keystone_identity_uri: { get_param: [EndpointMap, KeystoneAdmin, uri_no_suffix] }
+        keystone_auth_uri: {get_param: [EndpointMap, KeystoneInternal, uri] }
+        keystone_public_url: { get_param: [EndpointMap, KeystonePublic, uri_no_suffix] }
+        keystone_internal_url: { get_param: [EndpointMap, KeystoneInternal, uri_no_suffix] }
+        keystone_ec2_uri: { get_param: [EndpointMap, KeystoneEC2, uri] }
         enable_galera: {get_param: EnableGalera}
         enable_load_balancer: {get_param: EnableLoadBalancer}
         enable_ceph_storage: {get_param: EnableCephStorage}
@@ -818,6 +874,10 @@ resources:
                 list_join:
                 - "','"
                 - {get_param: NeutronTypeDrivers}
+        neutron_enable_dhcp_agent: {get_param: NeutronEnableDHCPAgent}
+        neutron_enable_l3_agent: {get_param: NeutronEnableL3Agent}
+        neutron_enable_metadata_agent: {get_param: NeutronEnableMetadataAgent}
+        neutron_enable_ovs_agent: {get_param: NeutronEnableOVSAgent}
         neutron_mechanism_drivers: {get_param: NeutronMechanismDrivers}
         neutron_allow_l3agent_failover: {get_param: NeutronAllowL3AgentFailover}
         neutron_l3_ha: {get_param: NeutronL3HA}
@@ -862,32 +922,14 @@ resources:
             - - 'mysql://neutron:'
               - {get_param: NeutronPassword}
               - '@'
-              - {get_param: MysqlVirtualIP}
+              - {get_param: MysqlVirtualIPUri}
               - '/ovs_neutron?charset=utf8'
-        neutron_url:
-          list_join:
-            - ''
-            - - 'http://'
-              - {get_param: NeutronApiVirtualIP}
-              - ':9696'
-        nova_admin_auth_url:
-          list_join:
-            - ''
-            - - 'http://'
-              - {get_param: KeystoneAdminApiVirtualIP}
-              - ':35357'
-        neutron_admin_auth_url:
-          list_join:
-            - ''
-            - - 'http://'
-              - {get_param: KeystoneAdminApiVirtualIP}
-              - ':35357/v2.0'
-        nova_internal_url:
-          list_join:
-            - ''
-            - - 'http://'
-              - {get_param: NovaApiVirtualIP}
-              - ':8774/v2'
+        neutron_internal_url: { get_param: [ EndpointMap, NeutronInternal, uri ] }
+        neutron_public_url: { get_param: [ EndpointMap, NeutronPublic, uri ] }
+        neutron_admin_url: { get_param: [ EndpointMap, NeutronAdmin, uri ] }
+        neutron_admin_auth_url: { get_param: [ EndpointMap, KeystoneAdmin, uri ] }
+        nova_admin_auth_url: { get_param: [ EndpointMap, KeystoneAdmin, uri_no_suffix ] }
+        nova_internal_url: { get_param: [ EndpointMap, NovaInternal, uri ] }
         ceilometer_backend: {get_param: CeilometerBackend}
         ceilometer_metering_secret: {get_param: CeilometerMeteringSecret}
         ceilometer_password: {get_param: CeilometerPassword}
@@ -895,16 +937,20 @@ resources:
           list_join:
             - ''
             - - 'redis://'
-              - {get_param: RedisVirtualIP}
+              - {get_param: RedisVirtualIPUri}
               - ':6379'
         ceilometer_dsn:
           list_join:
             - ''
             - - 'mysql://ceilometer:unset@'
-              - {get_param: MysqlVirtualIP}
+              - {get_param: MysqlVirtualIPUri}
               - '/ceilometer'
         snmpd_readonly_user_name: {get_param: SnmpdReadonlyUserName}
         snmpd_readonly_user_password: {get_param: SnmpdReadonlyUserPassword}
+        nova_ipv6: {get_param: NovaIPv6}
+        glance_ipv6: {get_param: GlanceIPv6}
+        memcached_ipv6: {get_param: MemcachedIPv6}
+        corosync_ipv6: {get_param: CorosyncIPv6}
         nova_password: {get_param: NovaPassword}
         nova_dsn:
           list_join:
@@ -912,8 +958,9 @@ resources:
             - - 'mysql://nova:'
               - {get_param: NovaPassword}
               - '@'
-              - {get_param: MysqlVirtualIP}
+              - {get_param: MysqlVirtualIPUri}
               - '/nova'
+        instance_name_template: {get_param: InstanceNameTemplate}
         pcsd_password: {get_param: PcsdPassword}
         rabbit_username: {get_param: RabbitUserName}
         rabbit_password: {get_param: RabbitPassword}
@@ -921,16 +968,19 @@ resources:
         rabbit_client_use_ssl: {get_param: RabbitClientUseSSL}
         rabbit_client_port: {get_param: RabbitClientPort}
         # We need to force the following into a string because 'unlimited' is a valid setting
+        mongodb_ipv6: {get_param: MongoDbIPv6}
         rabbit_fd_limit:
           str_replace:
             template: "'LIMIT'"
             params:
               LIMIT: {get_param: RabbitFDLimit}
+        rabbit_ipv6: {get_param: RabbitIPv6}
         ntp_servers:
           str_replace:
             template: '["server"]'
             params:
               server: {get_param: NtpServer}
+        timezone: {get_param: TimeZone}
         control_virtual_interface: {get_param: ControlVirtualInterface}
         public_virtual_interface: {get_param: PublicVirtualInterface}
         swift_hash_suffix: {get_param: SwiftHashSuffix}
@@ -947,14 +997,7 @@ resources:
         cinder_api_network: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, CinderApiNetwork]}]}
         glance_api_network: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, GlanceApiNetwork]}]}
         glance_registry_network: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, GlanceRegistryNetwork]}]}
-        glance_api_servers:
-          list_join:
-            - ''
-            - - {get_param: GlanceProtocol}
-              - '://'
-              - {get_param: GlanceApiVirtualIP}
-              - ':'
-              - {get_param: GlancePort}
+        glance_api_servers: { get_param: [EndpointMap, GlanceInternal, uri]}
         heat_api_network: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, HeatApiNetwork]}]}
         keystone_public_api_network: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, KeystonePublicApiNetwork]}]}
         keystone_admin_api_network: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, KeystoneAdminApiNetwork]}]}
@@ -972,6 +1015,7 @@ resources:
         mysql_network: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, MysqlNetwork]}]}
         ceph_cluster_network: {get_attr: [NetIpSubnetMap, net_ip_subnet_map, {get_param: [ServiceNetMap, CephClusterNetwork]}]}
         ceph_public_network: {get_attr: [NetIpSubnetMap, net_ip_subnet_map, {get_param: [ServiceNetMap, CephPublicNetwork]}]}
+        mysql_virtual_ip: {get_param: MysqlVirtualIP}
         ceph_public_ip: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, CephPublicNetwork]}]}
 
   # Map heat metadata into hiera datafiles
@@ -987,6 +1031,7 @@ resources:
             - controller_extraconfig
             - extraconfig
             - controller
+            - database
             - object
             - swift_devices_and_proxy # provided by SwiftDevicesAndProxyConfig
             - ceph_cluster # provided by CephClusterConfig
@@ -1002,6 +1047,7 @@ resources:
             - cisco_n1kv_data # Optionally provided by ControllerExtraConfigPre
             - neutron_bigswitch_data # Optionally provided by ControllerExtraConfigPre
             - neutron_plumgrid_data # Optionally provided by ControllerExtraConfigPre
+            - neutron_nuage_data # Optionally provided by ControllerExtraConfigPre
           datafiles:
             controller_extraconfig:
               mapped_data: {get_param: ControllerExtraConfig}
@@ -1015,6 +1061,8 @@ resources:
                 ceph::profile::params::cluster_network: {get_input: ceph_cluster_network}
                 ceph::profile::params::public_network: {get_input: ceph_public_network}
                 ceph::mon::public_addr: {get_input: ceph_public_ip}
+            database:
+              raw_data: {get_file: hieradata/database.yaml}
             object:
               raw_data: {get_file: hieradata/object.yaml}
             controller:
@@ -1025,6 +1073,7 @@ resources:
                 # Pacemaker
                 enable_load_balancer: {get_input: enable_load_balancer}
                 hacluster_pwd: {get_input: pcsd_password}
+                corosync_ipv6: {get_input: corosync_ipv6}
 
                 # Swift
                 swift::proxy::proxy_local_net_ip: {get_input: swift_proxy_network}
@@ -1063,13 +1112,15 @@ resources:
                 cinder_enable_iscsi_backend: {get_input: cinder_enable_iscsi_backend}
                 cinder::glance::glance_api_servers: {get_input: glance_api_servers}
                 cinder_backend_config: {get_input: CinderBackendConfig}
+                cinder::db::mysql::password: {get_input: cinder_password}
 
                 # Glance
+                glance_ipv6: {get_input: glance_ipv6}
                 glance::api::bind_port: {get_input: glance_port}
                 glance::api::bind_host: {get_input: glance_api_network}
                 glance::api::auth_uri: {get_input: keystone_auth_uri}
                 glance::api::identity_uri: {get_input: keystone_identity_uri}
-                glance::api::registry_host: {get_input: glance_registry_network}
+                glance_registry_network: {get_input: glance_registry_network}
                 glance::api::keystone_password: {get_input: glance_password}
                 glance::api::debug: {get_input: debug}
                 glance_notifier_strategy: {get_input: glance_notifier_strategy}
@@ -1082,7 +1133,7 @@ resources:
                 glance::registry::auth_uri: {get_input: keystone_auth_uri}
                 glance::registry::identity_uri: {get_input: keystone_identity_uri}
                 glance::registry::debug: {get_input: debug}
-                glance::backend::swift::swift_store_auth_address: {get_input: keystone_auth_address}
+                glance::backend::swift::swift_store_auth_address: {get_input: keystone_auth_uri}
                 glance::backend::swift::swift_store_user: service:glance
                 glance::backend::swift::swift_store_key: {get_input: glance_password}
                 glance_backend: {get_input: glance_backend}
@@ -1090,6 +1141,7 @@ resources:
                 glance_file_pcmk_fstype: {get_param: GlanceFilePcmkFstype}
                 glance_file_pcmk_manage: {get_param: GlanceFilePcmkManage}
                 glance_file_pcmk_options: {get_param: GlanceFilePcmkOptions}
+                glance::db::mysql::password: {get_input: glance_password}
 
                 # Heat
                 heat_stack_domain_admin_password: {get_input: heat_stack_domain_admin_password}
@@ -1111,14 +1163,10 @@ resources:
                 heat::database_connection: {get_input: heat_dsn}
                 heat::debug: {get_input: debug}
                 # TO-DO: Remove this class as soon as Keystone v3 will be fully functional
-                heat::keystone::domain::auth_url:
-                  list_join:
-                    - ''
-                    - - 'http://'
-                      - {get_param: KeystoneAdminApiVirtualIP}
-                      - ':35357/v2.0'
+                heat::keystone::domain::auth_url: { get_param: [ EndpointMap, KeystoneAdmin, uri ] }
                 heat::keystone::domain::keystone_password: {get_input: admin_password}
                 heat::keystone::domain::domain_password: {get_input: heat_stack_domain_admin_password}
+                heat::db::mysql::password: {get_input: heat_password}
 
                 # Keystone
                 keystone::roles::admin::password: {get_input: admin_password}
@@ -1138,8 +1186,11 @@ resources:
                 keystone::rabbit_port: {get_input: rabbit_client_port}
                 keystone::notification_driver: {get_input: keystone_notification_driver}
                 keystone::notification_format: {get_input: keystone_notification_format}
+                keystone::public_endpoint: {get_input: keystone_public_url}
+                keystone::db::mysql::password: {get_input: admin_token}
                 # MongoDB
                 mongodb::server::bind_ip: {get_input: mongo_db_network}
+                mongodb::server::ipv6: {get_input: mongodb_ipv6}
                 # MySQL
                 admin_password: {get_input: admin_password}
                 enable_galera: {get_input: enable_galera}
@@ -1150,6 +1201,7 @@ resources:
                 mysql::server::root_password: {get_input: mysql_root_password}
                 mysql_cluster_name: {get_input: mysql_cluster_name}
                 mysql_bind_host: {get_input: mysql_network}
+                mysql_virtual_ip: {get_input: mysql_virtual_ip}
 
                 # Neutron
                 neutron::bind_host: {get_input: neutron_api_network}
@@ -1171,6 +1223,10 @@ resources:
                 neutron_router_distributed: {get_input: neutron_router_distributed}
                 neutron::core_plugin: {get_input: neutron_core_plugin}
                 neutron::service_plugins: {get_input: neutron_service_plugins}
+                neutron::enable_dhcp_agent: {get_input: neutron_enable_dhcp_agent}
+                neutron::enable_l3_agent: {get_input: neutron_enable_l3_agent}
+                neutron::enable_metadata_agent: {get_input: neutron_enable_metadata_agent}
+                neutron::enable_ovs_agent: {get_input: neutron_enable_ovs_agent}
                 neutron::plugins::ml2::type_drivers: {get_input: neutron_type_drivers}
                 neutron_mechanism_drivers: {get_input: neutron_mechanism_drivers}
                 neutron::server::allow_automatic_l3agent_failover: {get_input: neutron_allow_l3agent_failover}
@@ -1196,6 +1252,7 @@ resources:
                 neutron::server::notifications::tenant_name: 'service'
                 neutron::server::notifications::project_name: 'service'
                 neutron::server::notifications::password: {get_input: nova_password}
+                neutron::db::mysql::password: {get_input: neutron_password}
 
                 # Ceilometer
                 ceilometer_backend: {get_input: ceilometer_backend}
@@ -1211,8 +1268,9 @@ resources:
                 ceilometer::api::keystone_auth_uri: {get_input: keystone_auth_uri}
                 ceilometer::api::keystone_identity_uri: {get_input: keystone_identity_uri}
                 ceilometer::agent::auth::auth_password: {get_input: ceilometer_password}
-                ceilometer::agent::auth::auth_url: {get_input: keystone_auth_address}
+                ceilometer::agent::auth::auth_url: {get_input: keystone_auth_uri}
                 ceilometer::agent::central::coordination_url: {get_input: ceilometer_coordination_url}
+                ceilometer::db::mysql::password: {get_input: ceilometer_password}
                 snmpd_readonly_user_name: {get_input: snmpd_readonly_user_name}
                 snmpd_readonly_user_password: {get_input: snmpd_readonly_user_password}
 
@@ -1222,6 +1280,8 @@ resources:
                 nova::rabbit_use_ssl: {get_input: rabbit_client_use_ssl}
                 nova::rabbit_port: {get_input: rabbit_client_port}
                 nova::debug: {get_input: debug}
+                nova::use_ipv6: {get_input: nova_ipv6}
+                nova_ipv6: {get_input: nova_ipv6}
                 nova::api::auth_uri: {get_input: keystone_auth_uri}
                 nova::api::identity_uri: {get_input: keystone_identity_uri}
                 nova::api::api_bind_address: {get_input: nova_api_network}
@@ -1230,10 +1290,12 @@ resources:
                 nova::database_connection: {get_input: nova_dsn}
                 nova::glance_api_servers: {get_input: glance_api_servers}
                 nova::api::neutron_metadata_proxy_shared_secret: {get_input: neutron_metadata_proxy_shared_secret}
+                nova::api::instance_name_template: {get_input: instance_name_template}
                 nova::network::neutron::neutron_admin_password: {get_input: neutron_password}
-                nova::network::neutron::neutron_url: {get_input: neutron_url}
+                nova::network::neutron::neutron_url: {get_input: neutron_internal_url}
                 nova::network::neutron::neutron_admin_auth_url: {get_input: neutron_admin_auth_url}
                 nova::vncproxy::host: {get_input: nova_api_network}
+                nova::db::mysql::password: {get_input: nova_password}
 
                 # Horizon
                 apache::ip: {get_input: horizon_network}
@@ -1248,17 +1310,21 @@ resources:
                 rabbitmq::file_limit: {get_input: rabbit_fd_limit}
                 rabbitmq::default_user: {get_input: rabbit_username}
                 rabbitmq::default_pass: {get_input: rabbit_password}
+                rabbit_ipv6: {get_input: rabbit_ipv6}
                 # Redis
                 redis::bind: {get_input: redis_network}
                 redis_vip: {get_input: redis_vip}
                 # Misc
                 memcached::listen_ip: {get_input: memcached_network}
+                memcached_ipv6: {get_input: memcached_ipv6}
                 neutron_public_interface_ip: {get_input: neutron_public_interface_ip}
                 ntp::servers: {get_input: ntp_servers}
+                timezone::timezone: {get_input: timezone}
                 control_virtual_interface: {get_input: control_virtual_interface}
                 public_virtual_interface: {get_input: public_virtual_interface}
                 tripleo::loadbalancer::control_virtual_interface: {get_input: control_virtual_interface}
                 tripleo::loadbalancer::public_virtual_interface: {get_input: public_virtual_interface}
+                tripleo::loadbalancer::service_certificate: {get_attr: [NodeTLSData, deployed_ssl_certificate_path]}
                 tripleo::packages::enable_install: {get_input: enable_package_install}
                 tripleo::packages::enable_upgrade: {get_input: enable_package_upgrade}
 
@@ -1272,7 +1338,7 @@ resources:
   # Hook for site-specific additional pre-deployment config,
   # applying to all nodes, e.g node registration/unregistration
   NodeExtraConfig:
-    depends_on: ControllerExtraConfigPre
+    depends_on: [ControllerExtraConfigPre, NodeTLSData]
     type: OS::TripleO::NodeExtraConfig
     properties:
         server: {get_resource: Controller}
@@ -1329,11 +1395,11 @@ outputs:
       Server's IP address and hostname in the /etc/hosts format
     value:
       str_replace:
-        template: IP HOST.localdomain HOST CLOUDNAME
+        template: IP HOST.localdomain HOST
         params:
           IP: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, ControllerHostnameResolveNetwork]}]}
+          DOMAIN: {get_param: CloudDomain}
           HOST: {get_attr: [Controller, name]}
-          CLOUDNAME: {get_param: CloudName}
   nova_server_resource:
     description: Heat resource handle for the Nova compute server
     value:
@@ -1345,6 +1411,13 @@ outputs:
         template: 'r1z1-IP:%PORT%/d1'
         params:
           IP: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, SwiftMgmtNetwork]}]}
+  swift_device_v6:
+    description: Swift device with ipv6 formatted for swift-ring-builder
+    value:
+      str_replace:
+        template: 'r1z1-IP:%PORT%/d1'
+        params:
+          IP: {get_attr: [NetIpMap, net_ip_uri_map, {get_param: [ServiceNetMap, SwiftMgmtNetwork]}]}
   swift_proxy_memcache:
     description: Swift proxy-memcache value
     value:
@@ -1352,11 +1425,26 @@ outputs:
         template: "IP:11211"
         params:
           IP: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, MemcachedNetwork]}]}
+  swift_proxy_memcache_v6:
+    description: Swift proxy-memcache value with [] around v6 IP
+    value:
+      str_replace:
+        template: "IP:11211"
+        params:
+          IP: {get_attr: [NetIpMap, net_ip_uri_map, {get_param: [ServiceNetMap, MemcachedNetwork]}]}
   config_identifier:
     description: identifier which changes if the controller configuration may need re-applying
     value:
       list_join:
         - ','
         - - {get_attr: [ControllerDeployment, deploy_stdout]}
+          - {get_attr: [NodeTLSCAData, deploy_stdout]}
+          - {get_attr: [NodeTLSData, deploy_stdout]}
           - {get_attr: [ControllerExtraConfigPre, deploy_stdout]}
           - {get_param: UpdateIdentifier}
+  tls_key_modulus_md5:
+    description: MD5 checksum of the TLS Key Modulus
+    value: {get_attr: [NodeTLSData, key_modulus_md5]}
+  tls_cert_modulus_md5:
+    description: MD5 checksum of the TLS Certificate Modulus
+    value: {get_attr: [NodeTLSData, cert_modulus_md5]}

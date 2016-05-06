@@ -4,9 +4,15 @@ description: 'Swift Devices and Proxy Config for Puppet'
 parameters:
   controller_swift_devices:
     type: comma_delimited_list
+  controller_swift_devices_v6:
+    type: comma_delimited_list
   object_store_swift_devices:
     type: comma_delimited_list
+  object_store_swift_devices_v6:
+    type: comma_delimited_list
   controller_swift_proxy_memcaches:
+    type: comma_delimited_list
+  controller_swift_proxy_memcaches_v6:
     type: comma_delimited_list
 
 resources:

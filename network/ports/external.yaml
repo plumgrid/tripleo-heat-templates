@@ -52,6 +52,9 @@ outputs:
   ip_address:
     description: external network IP
     value: {get_attr: [ExternalPort, fixed_ips, 0, ip_address]}
+  ip_address_uri:
+    description: external network IP (for compatibility with external_v6.yaml)
+    value: {get_attr: [ExternalPort, fixed_ips, 0, ip_address]}
   ip_subnet:
     # FIXME: this assumes a 2 digit subnet CIDR (need more heat functions?)
     description: IP/Subnet CIDR for the external network IP

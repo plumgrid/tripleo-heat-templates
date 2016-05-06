@@ -33,11 +33,12 @@ redis::sentinel::redis_host: "%{hiera('bootstrap_nodeid_ip')}"
 redis::sentinel::notification_script: '/usr/local/bin/redis-notifications.sh'
 
 # service tenant
-nova::api::admin_tenant_name: 'service'
 glance::api::keystone_tenant: 'service'
 glance::registry::keystone_tenant: 'service'
 neutron::server::auth_tenant: 'service'
 neutron::agents::metadata::auth_tenant: 'service'
+neutron::agents::l3::router_delete_namespaces: True
+neutron::agents::dhcp::dhcp_delete_namespaces: True
 cinder::api::keystone_tenant: 'service'
 swift::proxy::authtoken::admin_tenant_name: 'service'
 ceilometer::api::keystone_tenant: 'service'
@@ -80,6 +81,9 @@ nova::scheduler::filter::ram_allocation_ratio: '1.0'
 
 # cinder
 cinder::scheduler::scheduler_driver: cinder.scheduler.filter_scheduler.FilterScheduler
+cinder::config::cinder_config:
+  DEFAULT/host:
+    value: hostgroup
 
 # heat
 heat::engine::configure_delegated_roles: false
@@ -122,3 +126,5 @@ tripleo::loadbalancer::heat_api: true
 tripleo::loadbalancer::heat_cloudwatch: true
 tripleo::loadbalancer::heat_cfn: true
 tripleo::loadbalancer::horizon: true
+
+controller_classes: []

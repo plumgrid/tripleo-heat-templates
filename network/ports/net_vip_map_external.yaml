@@ -30,16 +30,31 @@ parameters:
   ExternalIp:
     default: ''
     type: string
+  ExternalIpUri:
+    default: ''
+    type: string
   InternalApiIp:
+    default: ''
+    type: string
+  InternalApiIpUri:
     default: ''
     type: string
   StorageIp:
     default: ''
     type: string
+  StorageIpUri:
+    default: ''
+    type: string
   StorageMgmtIp:
     default: ''
     type: string
+  StorageMgmtIpUri:
+    default: ''
+    type: string
   TenantIp:
+    default: ''
+    type: string
+  TenantIpUri:
     default: ''
     type: string
   PgMgmtIp:
@@ -63,3 +78,13 @@ outputs:
       storage_mgmt: {get_param: StorageMgmtNetworkVip}
       pg_fabric: {get_param: PgFabricNetworkVip}
       pg_mgmt:  {get_param: PgMgmtNetworkVip}
+  net_ip_uri_map:
+    description: >
+      A Hash containing a mapping of netowrk names to assigned IPs for a
+      specific machine with brackets around IPv6 addresses for use in URLs.
+    value:
+      ctlplane: {get_param: ControlPlaneIP}
+      external: {get_param: ExternalNetworkVip}
+      internal_api: {get_param: InternalApiNetworkVip}
+      storage: {get_param: StorageNetworkVip}
+      storage_mgmt: {get_param: StorageMgmtNetworkVip}

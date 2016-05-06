@@ -8,3 +8,4 @@ cinder::config::cinder_config:
     value: 'compute:Compute Service:internalURL'
   DEFAULT/swift_catalog_info:
     value: 'object-store:swift:internalURL'
+volume_classes: []

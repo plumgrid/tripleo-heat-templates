@@ -627,6 +627,12 @@ outputs:
   tenant_ip_address:
     description: IP address of the server in the tenant network
     value: {get_attr: [TenantPort, ip_address]}
+  pg_mgmt_ip_address:
+    description: IP address of the server in the pg_mgmt network
+    value: {get_attr: [PgMgmtPort, ip_address]}
+  pg_fabric_ip_address:
+    description: IP address of the server in the pg_fabric network
+    value: {get_attr: [PgFabricPort, ip_address]}
   hostname:
     description: Hostname of the server
     value: {get_attr: [NovaCompute, name]}

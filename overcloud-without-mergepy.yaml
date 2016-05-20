@@ -1124,8 +1124,18 @@ resources:
       StorageIpList: {get_attr: [Controller, storage_ip_address]}
       StorageMgmtIpList: {get_attr: [Controller, storage_mgmt_ip_address]}
       TenantIpList: {get_attr: [Controller, tenant_ip_address]}
-      PgFabricIpList: {get_attr: [Controller, pg_fabric_ip_address]} 
+      PgFabricIpList: {get_attr: [Controller, pg_fabric_ip_address]}
       PgMgmtIpList: {get_attr: [Controller, pg_mgmt_ip_address]}
+
+  ComputeIpListMap:
+    type: OS::TripleO::Network::Ports::NetIpListMap
+    properties:
+      ControlPlaneIpList: {get_attr: [Compute, ip_address]}
+      InternalApiIpList: {get_attr: [Compute, internal_api_ip_address]}
+      StorageIpList: {get_attr: [Compute, storage_ip_address]}
+      TenantIpList: {get_attr: [Compute, tenant_ip_address]}
+      PgFabricIpList: {get_attr: [Compute, pg_fabric_ip_address]}
+      PgMgmtIpList: {get_attr: [Compute, pg_mgmt_ip_address]}
 
   allNodesConfig:
     type: OS::TripleO::AllNodes::SoftwareConfig
@@ -1154,8 +1164,10 @@ resources:
       neutron_api_node_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, NeutronApiNetwork]}]}
       keystone_public_api_node_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, KeystonePublicApiNetwork]}]}
       keystone_admin_api_node_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, KeystoneAdminApiNetwork]}]}
-      plumgrid_director_mgmt_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgMgmtNetwork]}]} 
+      plumgrid_director_mgmt_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgMgmtNetwork]}]}
       plumgrid_director_fabric_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgFabricNetwork]}]}
+      plumgrid_edge_mgmt_ips: {get_attr: [ComputeIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgMgmtNetwork]}]}
+      plumgrid_edge_fabric_ips: {get_attr: [ComputeIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgFabricNetwork]}]}
 
   MysqlRootPassword:
     type: OS::Heat::RandomString

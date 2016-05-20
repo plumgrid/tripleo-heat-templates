@@ -54,6 +54,10 @@ parameters:
     type: comma_delimited_list
   plumgrid_director_fabric_ips:
     type: comma_delimited_list
+  plumgrid_edge_mgmt_ips:
+    type: comma_delimited_list
+  plumgrid_edge_fabric_ips:
+    type: comma_delimited_list
 
 resources:
 
@@ -261,6 +265,14 @@ resources:
                   list_join:
                   - ','
                   - {get_param: plumgrid_director_fabric_ips}
+                plumgrid_edge_mgmt_ips:
+                  list_join:
+                  - ','
+                  - {get_param: plumgrid_edge_mgmt_ips}
+                plumgrid_edge_fabric_ips:
+                  list_join:
+                  - ','
+                  - {get_param: plumgrid_edge_fabric_ips}
 
 
 outputs:

@@ -19,12 +19,12 @@ parameter_defaults:
 
  # Parameterd for PLUMgrid zone creation
   PLUMgridRepoURL: http://127.0.0.1:81/yum
-  PLUMgridRepoComponent: halfdome-500
+  PLUMgridRepoComponent: halfdome-510
   PLUMgridNetwork: 127.0.0.0/24
   EnablePackageInstall: true
 
  # IP address of OPSVM
- # OPSVMIP: 127.0.0.1 
+ # OPSVMIP: 127.0.0.1
 
  # L2 Gateway parameters
  # L2GatewayVendor: Arista

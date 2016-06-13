@@ -2,7 +2,7 @@ heat_template_version: 2015-04-30
 
 description: >
   Software Config to drive os-net-config with 2 bonded nics on a bridge
-  with VLANs attached for the controller role.
+  with a VLANs attached for the controller role.
 
 parameters:
   ControlPlaneIp:
@@ -30,10 +30,9 @@ parameters:
     description: IP address/subnet on the tenant network
     type: string
   BondInterfaceOvsOptions:
-    default: 'bond_mode=balance-tcp lacp=active other-config:lacp-fallback-ab=true'
+    default: ''
     description: The ovs_options string for the bond interface. Set things like
                  lacp=active and/or bond_mode=balance-slb using this option.
-                 Default wil attempt LACP, but will fall back to active-backup.
     type: string
   ExternalNetworkVlanID:
     default: 10
@@ -66,7 +65,7 @@ parameters:
   DnsServers: # Override this via parameter_defaults
     default: []
     description: A list of DNS servers (2 max for some implementations) that will be added to resolv.conf.
-    type: comma_delimited_list
+    type: json
   EC2MetadataIp: # Override this via parameter_defaults
     description: The IP address of the EC2 metadata server.
     type: string
@@ -127,29 +126,29 @@ resources:
                   device: bond1
                   vlan_id: {get_param: InternalApiNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: InternalApiIpSubnet}
+                  -
+                    ip_netmask: {get_param: InternalApiIpSubnet}
                 -
                   type: vlan
                   device: bond1
                   vlan_id: {get_param: StorageNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: StorageIpSubnet}
+                  -
+                    ip_netmask: {get_param: StorageIpSubnet}
                 -
                   type: vlan
                   device: bond1
                   vlan_id: {get_param: StorageMgmtNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: StorageMgmtIpSubnet}
+                  -
+                    ip_netmask: {get_param: StorageMgmtIpSubnet}
                 -
                   type: vlan
                   device: bond1
                   vlan_id: {get_param: TenantNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: TenantIpSubnet}
+                  -
+                    ip_netmask: {get_param: TenantIpSubnet}
 
 outputs:
   OS::stack_id:

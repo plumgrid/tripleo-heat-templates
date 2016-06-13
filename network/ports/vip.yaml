@@ -1,11 +1,15 @@
 heat_template_version: 2015-04-30
 
 description: >
-  Creates a port for a VIP on the isolated network NetworkName.
+  Creates a port for a VIP on the isolated network NetName.
   The IP address will be chosen automatically if FixedIPs is empty.
 
 parameters:
-  NetworkName:
+  ServiceName: # Here for compatibility with from_service.yaml
+    description: Name of the service to lookup
+    default: ''
+    type: string
+  NetName:
     description: Name of the network where the VIP will be created
     default: internal_api
     type: string
@@ -15,6 +19,7 @@ parameters:
     type: string
   ControlPlaneIP: # Here for compatability with noop.yaml
     description: IP address on the control plane
+    default: ''
     type: string
   ControlPlaneNetwork:
     description: The name of the undercloud Neutron control plane
@@ -31,7 +36,7 @@ resources:
   VipPort:
     type: OS::Neutron::Port
     properties:
-      network: {get_param: NetworkName}
+      network: {get_param: NetName}
       name: {get_param: PortName}
       fixed_ips: {get_param: FixedIPs}
       replacement_policy: AUTO

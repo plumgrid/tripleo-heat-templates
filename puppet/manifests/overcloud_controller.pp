@@ -15,17 +15,20 @@
 
 include tripleo::packages
 
+$enable_load_balancer = hiera('enable_load_balancer', true)
+
 if hiera('step') >= 1 {
 
   create_resources(sysctl::value, hiera('sysctl_settings'), {})
 
   $controller_node_ips = split(hiera('controller_node_ips'), ',')
 
-  class { '::tripleo::loadbalancer' :
-    controller_hosts => $controller_node_ips,
-    manage_vip       => true,
+  if $enable_load_balancer {
+    class { '::tripleo::loadbalancer' :
+      controller_hosts => $controller_node_ips,
+      manage_vip       => true,
+    }
   }
-
 }
 
 if hiera('step') >= 2 {
@@ -84,20 +87,70 @@ if hiera('step') >= 2 {
         'max_connections' => hiera('mysql_max_connections'),
         'open_files_limit' => '-1',
       },
-    },
-    remove_default_accounts => true,
+    }
   }
 
   # FIXME: this should only occur on the bootstrap host (ditto for db syncs)
   # Create all the database schemas
-  include ::keystone::db::mysql
-  include ::glance::db::mysql
-  include ::nova::db::mysql
-  include ::neutron::db::mysql
-  include ::cinder::db::mysql
-  include ::heat::db::mysql
+  # Example DSN format: mysql://user:password@host/dbname
+  $allowed_hosts = ['%',hiera('mysql_bind_host')]
+  $keystone_dsn = split(hiera('keystone::database_connection'), '[@:/?]')
+  class { 'keystone::db::mysql':
+    user          => $keystone_dsn[3],
+    password      => $keystone_dsn[4],
+    host          => $keystone_dsn[5],
+    dbname        => $keystone_dsn[6],
+    allowed_hosts => $allowed_hosts,
+  }
+  $glance_dsn = split(hiera('glance::api::database_connection'), '[@:/?]')
+  class { 'glance::db::mysql':
+    user          => $glance_dsn[3],
+    password      => $glance_dsn[4],
+    host          => $glance_dsn[5],
+    dbname        => $glance_dsn[6],
+    allowed_hosts => $allowed_hosts,
+  }
+  $nova_dsn = split(hiera('nova::database_connection'), '[@:/?]')
+  class { 'nova::db::mysql':
+    user          => $nova_dsn[3],
+    password      => $nova_dsn[4],
+    host          => $nova_dsn[5],
+    dbname        => $nova_dsn[6],
+    allowed_hosts => $allowed_hosts,
+  }
+  $neutron_dsn = split(hiera('neutron::server::database_connection'), '[@:/?]')
+  class { 'neutron::db::mysql':
+    user          => $neutron_dsn[3],
+    password      => $neutron_dsn[4],
+    host          => $neutron_dsn[5],
+    dbname        => $neutron_dsn[6],
+    allowed_hosts => $allowed_hosts,
+  }
+  $cinder_dsn = split(hiera('cinder::database_connection'), '[@:/?]')
+  class { 'cinder::db::mysql':
+    user          => $cinder_dsn[3],
+    password      => $cinder_dsn[4],
+    host          => $cinder_dsn[5],
+    dbname        => $cinder_dsn[6],
+    allowed_hosts => $allowed_hosts,
+  }
+  $heat_dsn = split(hiera('heat::database_connection'), '[@:/?]')
+  class { 'heat::db::mysql':
+    user          => $heat_dsn[3],
+    password      => $heat_dsn[4],
+    host          => $heat_dsn[5],
+    dbname        => $heat_dsn[6],
+    allowed_hosts => $allowed_hosts,
+  }
   if downcase(hiera('ceilometer_backend')) == 'mysql' {
-    include ::ceilometer::db::mysql
+    $ceilometer_dsn = split(hiera('ceilometer_mysql_conn_string'), '[@:/?]')
+    class { 'ceilometer::db::mysql':
+      user          => $ceilometer_dsn[3],
+      password      => $ceilometer_dsn[4],
+      host          => $ceilometer_dsn[5],
+      dbname        => $ceilometer_dsn[6],
+      allowed_hosts => $allowed_hosts,
+    }
   }
 
   $rabbit_nodes = hiera('rabbit_node_ips')
@@ -210,10 +263,7 @@ if hiera('step') >= 3 {
   include ::glance::registry
   include join(['::glance::backend::', $glance_backend])
 
-  class { '::nova' :
-    memcached_servers => suffix(hiera('memcache_node_ips'), ':11211'),
-  }
-  include ::nova::config
+  include ::nova
   include ::nova::api
   include ::nova::cert
   include ::nova::conductor
@@ -314,7 +364,7 @@ if hiera('step') >= 3 {
     $ceph_pools = hiera('ceph_pools')
     ceph::pool { $ceph_pools : }
 
-    $cinder_pool_requires = [Ceph::Pool['volumes']]
+    $cinder_pool_requires = [Ceph::Pool[hiera('cinder_rbd_pool_name')]]
 
   } else {
     $cinder_pool_requires = []
@@ -323,9 +373,13 @@ if hiera('step') >= 3 {
   if hiera('cinder_enable_rbd_backend', false) {
     $cinder_rbd_backend = 'tripleo_ceph'
 
+    cinder_config {
+      "${cinder_rbd_backend}/host": value => 'hostgroup';
+    }
+
     cinder::backend::rbd { $cinder_rbd_backend :
-      rbd_pool        => 'volumes',
-      rbd_user        => 'openstack',
+      rbd_pool        => hiera('cinder_rbd_pool_name'),
+      rbd_user        => hiera('ceph_client_user_name'),
       rbd_secret_uuid => hiera('ceph::profile::params::fsid'),
       require         => $cinder_pool_requires,
     }
@@ -398,6 +452,7 @@ if hiera('step') >= 3 {
   include ::swift::proxy::keystone
   include ::swift::proxy::authtoken
   include ::swift::proxy::staticweb
+  include ::swift::proxy::ceilometer
   include ::swift::proxy::ratelimit
   include ::swift::proxy::catch_errors
   include ::swift::proxy::tempurl
@@ -432,7 +487,6 @@ if hiera('step') >= 3 {
     }
   }
   include ::ceilometer
-  include ::ceilometer::config
   include ::ceilometer::api
   include ::ceilometer::agent::notification
   include ::ceilometer::agent::central
@@ -461,8 +515,10 @@ if hiera('step') >= 3 {
     $_profile_support = 'None'
   }
   $neutron_options   = {'profile_support' => $_profile_support }
+  $vhost_params = { add_listen => false }
   class { 'horizon':
     cache_server_ip    => hiera('memcache_node_ips', '127.0.0.1'),
+    vhost_extra_params => $vhost_params,
     neutron_options    => $neutron_options,
   }
 
@@ -476,12 +532,18 @@ if hiera('step') >= 3 {
     snmpd_config => [ join(['rouser ', hiera('snmpd_readonly_user_name')]), 'proc  cron', 'includeAllDisks  10%', 'master agentx', 'trapsink localhost public', 'iquerySecName internalUser', 'rouser internalUser', 'defaultMonitors yes', 'linkUpDownNotifications yes' ],
   }
 
-  hiera_include('controller_classes')
-
 } #END STEP 3
 
 if hiera('step') >= 4 {
-  include ::keystone::cron::token_flush
+
+  if downcase(hiera('bootstrap_nodeid')) == $::hostname {
+    include ::keystone::roles::admin
+
+    # TO-DO: Remove this class as soon as Keystone v3 will be fully functional
+    include ::heat::keystone::domain
+    Class['::keystone::roles::admin'] -> Exec['heat_domain_create']
+  }
+
 } #END STEP 4
 
 $package_manifest_name = join(['/var/lib/tripleo/installed-packages/overcloud_controller', hiera('step')])

@@ -19,6 +19,12 @@ parameters:
   TenantIpSubnet:
     default: ''
     type: string
+  PgMgmtIpSubnet:
+    default: ''
+    type: string
+  PgFabricIpSubnet:
+    default: ''
+    type: string
   ControlPlaneSubnetCidr: # Override this via parameter_defaults
     default: '24'
     description: The subnet CIDR of the control plane network.
@@ -41,3 +47,5 @@ outputs:
       storage: {get_param: StorageIpSubnet}
       storage_mgmt: {get_param: StorageMgmtIpSubnet}
       tenant: {get_param: TenantIpSubnet}
+      pg_mgmt: {get_param: PgMgmtIpSubnet}
+      pg_fabric: {get_param: PgFabricIpSubnet}

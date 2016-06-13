@@ -8,6 +8,14 @@ resource_registry:
   OS::TripleO::Network::Storage: ../network/storage.yaml
   OS::TripleO::Network::Tenant: ../network/tenant.yaml
 
+  # Port assignments for the VIPs
+  OS::TripleO::Network::Ports::ExternalVipPort: ../network/ports/vip.yaml
+  OS::TripleO::Network::Ports::InternalApiVipPort: ../network/ports/vip.yaml
+  OS::TripleO::Network::Ports::StorageVipPort: ../network/ports/vip.yaml
+  OS::TripleO::Network::Ports::StorageMgmtVipPort: ../network/ports/vip.yaml
+  OS::TripleO::Network::Ports::TenantVipPort: ../network/ports/vip.yaml
+  OS::TripleO::Network::Ports::RedisVipPort: ../network/ports/vip.yaml
+
   # Port assignments for the controller role
   OS::TripleO::Controller::Ports::ExternalPort: ../network/ports/external.yaml
   OS::TripleO::Controller::Ports::InternalApiPort: ../network/ports/internal_api.yaml

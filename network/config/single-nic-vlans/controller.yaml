@@ -60,7 +60,7 @@ parameters:
   DnsServers: # Override this via parameter_defaults
     default: []
     description: A list of DNS servers (2 max for some implementations) that will be added to resolv.conf.
-    type: comma_delimited_list
+    type: json
   EC2MetadataIp: # Override this via parameter_defaults
     description: The IP address of the EC2 metadata server.
     type: string
@@ -109,26 +109,26 @@ resources:
                   type: vlan
                   vlan_id: {get_param: InternalApiNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: InternalApiIpSubnet}
+                  -
+                    ip_netmask: {get_param: InternalApiIpSubnet}
                 -
                   type: vlan
                   vlan_id: {get_param: StorageNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: StorageIpSubnet}
+                  -
+                    ip_netmask: {get_param: StorageIpSubnet}
                 -
                   type: vlan
                   vlan_id: {get_param: StorageMgmtNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: StorageMgmtIpSubnet}
+                  -
+                    ip_netmask: {get_param: StorageMgmtIpSubnet}
                 -
                   type: vlan
                   vlan_id: {get_param: TenantNetworkVlanID}
                   addresses:
-                    -
-                      ip_netmask: {get_param: TenantIpSubnet}
+                  -
+                    ip_netmask: {get_param: TenantIpSubnet}
 
 outputs:
   OS::stack_id:

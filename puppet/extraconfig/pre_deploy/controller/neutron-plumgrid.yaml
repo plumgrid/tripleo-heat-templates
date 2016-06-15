@@ -29,7 +29,7 @@ parameters:
   PLUMgridNovaMetadataIP:
     description: IP address of Nova Metadata
     type: string
-    default: 169.1.1.254
+    default: 169.254.1.254
   PLUMgridNovaMetadataPort:
     description: Port of Nova Metadata
     type: string
@@ -37,7 +37,7 @@ parameters:
   PLUMgridNovaMetadataSubnet:
     description: Subnet for PLUMgrid Metadata
     type: string
-    default: 169.1.1.254/30
+    default: 169.254.1.254/30
   PLUMgridRepoURL:
     description: URL for PLUMgrid Repository
     type: string

@@ -39,6 +39,7 @@ resource_registry:
   OS::TripleO::Network::Storage: network/noop.yaml
   OS::TripleO::Network::Tenant: network/noop.yaml
 
+  OS::TripleO::Network::Ports::NetVipMap: network/ports/net_ip_map.yaml
   OS::TripleO::Network::Ports::NetIpMap: network/ports/net_ip_map.yaml
   OS::TripleO::Network::Ports::NetIpSubnetMap: network/ports/net_ip_subnet_map.yaml
   OS::TripleO::Network::Ports::NetIpListMap: network/ports/net_ip_list_map.yaml
@@ -71,6 +72,9 @@ resource_registry:
 
   # Port assignments for service virtual IPs for the controller role
   OS::TripleO::Controller::Ports::RedisVipPort: network/ports/noop.yaml
+
+  # Service Endpoint Mappings
+  OS::TripleO::EndpointMap: network/endpoints/endpoint_map.yaml
 
   # validation resources
   OS::TripleO::AllNodes::Validation: os-apply-config/all-nodes-validation.yaml

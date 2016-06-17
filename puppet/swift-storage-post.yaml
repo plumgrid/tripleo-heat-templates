@@ -12,8 +12,18 @@ parameters:
      type: json
      description: Value which changes if the node configuration may need to be re-applied
 
-
 resources:
+
+  StorageArtifactsConfig:
+    type: deploy-artifacts.yaml
+
+  StorageArtifactsDeploy:
+    type: OS::Heat::StructuredDeployments
+    properties:
+      servers:  {get_param: servers}
+      config: {get_resource: StorageArtifactsConfig}
+      input_values:
+        update_identifier: {get_param: NodeConfigIdentifiers}
 
   StoragePuppetConfig:
     type: OS::Heat::SoftwareConfig
@@ -28,7 +38,9 @@ resources:
 
   StorageDeployment_Step1:
     type: OS::Heat::StructuredDeployments
+    depends_on: StorageArtifactsDeploy
     properties:
+      name: StorageDeployment_Step1
       servers:  {get_param: servers}
       config: {get_resource: StoragePuppetConfig}
       input_values:
@@ -49,6 +61,7 @@ resources:
     type: OS::Heat::StructuredDeployments
     depends_on: StorageDeployment_Step1
     properties:
+      name: StorageRingbuilderDeployment_Step2
       servers:  {get_param: servers}
       config: {get_resource: StorageRingbuilderPuppetConfig}
       input_values:

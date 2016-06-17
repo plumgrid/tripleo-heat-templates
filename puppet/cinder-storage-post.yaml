@@ -14,8 +14,20 @@ parameters:
 
 resources:
 
+  VolumeArtifactsConfig:
+    type: deploy-artifacts.yaml
+
+  VolumeArtifactsDeploy:
+    type: OS::Heat::StructuredDeployments
+    properties:
+      servers:  {get_param: servers}
+      config: {get_resource: VolumeArtifactsConfig}
+      input_values:
+        update_identifier: {get_param: NodeConfigIdentifiers}
+
   VolumePuppetConfig:
     type: OS::Heat::SoftwareConfig
+    depends_on: VolumeArtifactsDeploy
     properties:
       group: puppet
       options:
@@ -28,5 +40,14 @@ resources:
   VolumeDeployment_Step1:
     type: OS::Heat::StructuredDeployments
     properties:
+      name: VolumeDeployment_Step1
       servers:  {get_param: servers}
       config: {get_resource: VolumePuppetConfig}
+
+  # Note, this should come last, so use depends_on to ensure
+  # this is created after any other resources.
+  ExtraConfig:
+    depends_on: VolumeDeployment_Step1
+    type: OS::TripleO::NodeExtraConfigPost
+    properties:
+        servers: {get_param: servers}

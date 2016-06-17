@@ -13,7 +13,7 @@ parameters:
   ceph_client_key:
     default: ''
     type: string
-    description: Ceph key used to create the 'openstack' user keyring.
+    description: Ceph key used to create the client user keyring.
   ceph_fsid:
     default: ''
     type: string
@@ -27,6 +27,21 @@ parameters:
     type: comma_delimited_list
   ceph_mon_ips:
     type: comma_delimited_list
+  NovaRbdPoolName:
+    default: vms
+    type: string
+  CinderRbdPoolName:
+    default: volumes
+    type: string
+  GlanceRbdPoolName:
+    default: images
+    type: string
+  CephClientUserName:
+    default: openstack
+    type: string
+  CephIPv6:
+    default: False
+    type: boolean
 
 resources:
   CephClusterConfigImpl:
@@ -38,15 +53,25 @@ resources:
           datafiles:
             ceph_cluster:
               mapped_data:
+                ceph_ipv6: {get_param: CephIPv6}
                 ceph_storage_count: {get_param: ceph_storage_count}
                 ceph_mon_initial_members:
                   list_join:
                   - ','
                   - {get_param: ceph_mon_names}
-                ceph::profile::params::mon_host:
+                ceph_mon_host:
                   list_join:
                   - ','
                   - {get_param: ceph_mon_ips}
+                ceph_mon_host_v6:
+                  str_replace:
+                    template: "'[IPS_LIST]'"
+                    params:
+                      IPS_LIST:
+                        list_join:
+                        - '],['
+                        - {get_param: ceph_mon_ips}
+                ceph::profile::params::ms_bind_ipv6: {get_param: CephIPv6}
                 ceph::profile::params::fsid: {get_param: ceph_fsid}
                 ceph::profile::params::mon_key: {get_param: ceph_mon_key}
                 # We should use a separated key for the non-admin clients
@@ -65,15 +90,34 @@ resources:
                         keyring_path: '/var/lib/ceph/bootstrap-osd/ceph.keyring',
                         cap_mon: 'allow profile bootstrap-osd'
                       },
-                      client.openstack: {
+                      client.CLIENT_USER: {
                         secret: 'ADMIN_KEY',
                         mode: '0644',
                         cap_mon: 'allow r',
-                        cap_osd: 'allow class-read object_prefix rbd_children, allow rwx pool=volumes, allow rwx pool=vms, allow rwx pool=images'
+                        cap_osd: 'allow class-read object_prefix rbd_children, allow rwx pool=CINDER_POOL, allow rwx pool=NOVA_POOL, allow rwx pool=GLANCE_POOL'
                       }
                     }"
                     params:
+                      CLIENT_USER: {get_param: CephClientUserName}
                       ADMIN_KEY: {get_param: ceph_admin_key}
+                      NOVA_POOL: {get_param: NovaRbdPoolName}
+                      CINDER_POOL: {get_param: CinderRbdPoolName}
+                      GLANCE_POOL: {get_param: GlanceRbdPoolName}
+                nova::compute::rbd::libvirt_images_rbd_pool: {get_param: NovaRbdPoolName}
+                cinder_rbd_pool_name: {get_param: CinderRbdPoolName}
+                glance::backend::rbd::rbd_store_pool: {get_param: GlanceRbdPoolName}
+                nova::compute::rbd::libvirt_rbd_user: {get_param: CephClientUserName}
+                glance::backend::rbd::rbd_store_user: {get_param: CephClientUserName}
+                nova::compute::rbd::rbd_keyring:
+                  list_join:
+                  - '.'
+                  - - 'client'
+                    - {get_param: CephClientUserName}
+                ceph_client_user_name: {get_param: CephClientUserName}
+                ceph_pools:
+                  - {get_param: CinderRbdPoolName}
+                  - {get_param: NovaRbdPoolName}
+                  - {get_param: GlanceRbdPoolName}
 
 outputs:
   config_id:

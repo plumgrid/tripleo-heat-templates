@@ -43,6 +43,8 @@ parameters:
     type: string
   rhel_reg_method:
     type: string
+  rhel_reg_sat_repo:
+    type: string
 
 resources:
 
@@ -68,11 +70,13 @@ resources:
         - name: REG_USER
         - name: REG_TYPE
         - name: REG_METHOD
+        - name: REG_SAT_REPO
       config: {get_file: scripts/rhel-registration}
 
   RHELRegistrationDeployment:
     type: OS::Heat::SoftwareDeployment
     properties:
+      name: RHELRegistrationDeployment
       server:  {get_param: server}
       config: {get_resource: RHELRegistration}
       actions: ['CREATE'] # Only do this on CREATE
@@ -94,6 +98,7 @@ resources:
         REG_USER: {get_param: rhel_reg_user}
         REG_TYPE: {get_param: rhel_reg_type}
         REG_METHOD: {get_param: rhel_reg_method}
+        REG_SAT_REPO: {get_param: rhel_reg_sat_repo}
 
   RHELUnregistration:
     type: OS::Heat::SoftwareConfig
@@ -106,6 +111,7 @@ resources:
   RHELUnregistrationDeployment:
     type: OS::Heat::SoftwareDeployment
     properties:
+      name: RHELUnregistrationDeployment
       server:  {get_param: server}
       config: {get_resource: RHELUnregistration}
       actions: ['DELETE'] # Only do this on DELETE

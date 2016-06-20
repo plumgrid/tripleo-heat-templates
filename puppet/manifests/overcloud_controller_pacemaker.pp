@@ -753,8 +753,14 @@ if hiera('step') >= 3 {
       service_plugins => []
     }
 
-  }
-  else {
+  } elsif hiera('neutron::core_plugin') == 'networking_plumgrid.neutron.plugins.plugin.NeutronPluginPLUMgridV2' {
+
+    # Neutron class definitions
+    class{'::neutron':
+      service_plugins => [],
+    }
+
+  } else {
     # Neutron class definitions
     include ::neutron
   }
@@ -778,6 +784,69 @@ if hiera('step') >= 3 {
       midonet_api_ip    => hiera('tripleo::loadbalancer::public_virtual_ip'),
       keystone_tenant   => hiera('neutron::server::auth_tenant'),
       keystone_password => hiera('neutron::server::auth_password')
+    }
+  }
+  if hiera('neutron::core_plugin') == 'networking_plumgrid.neutron.plugins.plugin.NeutronPluginPLUMgridV2' {
+
+    class { '::neutron::plugins::plumgrid' :
+      connection                   => hiera('neutron::server::database_connection'),
+      controller_priv_host         => hiera('keystone_admin_api_vip'),
+      admin_password               => hiera('admin_password'),
+      metadata_proxy_shared_secret => hiera('nova::api::neutron_metadata_proxy_shared_secret'),
+    }
+
+    #TODO: Notification engine won't be turned on
+    #Untill https://bugzilla.redhat.com/show_bug.cgi?id=1292182
+    #gets fixed.
+    #include ::neutron::server::notifications
+    include ::neutron::plugins::plumgrid
+
+    $check_director_ips = hiera(plumgrid_director_mgmt_ips, 'undef')
+    if $check_director_ips == 'undef' {
+      $plumgrid_director_ips = hiera(controller_node_ips)
+    } else {
+      $plumgrid_director_ips = hiera(plumgrid_director_mgmt_ips)
+    }
+
+    # Disable NetworkManager
+    service { 'NetworkManager':
+      ensure => stopped,
+      enable => false,
+    }
+
+    # Configure new parameters for pglib
+    $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.1.1.254/30')
+    exec { 'pg_lib metadata subnet':
+    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['::neutron'],
+    }
+
+    # Install PLUMgrid Director
+    class{'plumgrid':
+      plumgrid_ip => $plumgrid_director_ips,
+      plumgrid_port => '8001',
+      rest_port => '9180',
+      mgmt_dev => hiera('plumgrid_mgmt_dev', '%AUTO_DEV%'),
+      fabric_dev => hiera('plumgrid_fabric_dev', '%AUTO_DEV%'),
+      repo_baseurl => hiera('plumgrid_repo_baseurl'),
+      repo_component => hiera('plumgrid_repo_component'),
+      lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
+      md_ip => hiera('plumgrid_md_ip'),
+      manage_repo => true,
+      source_net=> hiera('plumgrid_network', 'undef'),
+      dest_net => hiera('plumgrid_network', 'undef'),
+      before => Class['::neutron'],
+    }
+
+    class{'sal':
+      plumgrid_ip => $plumgrid_director_ips,
+      virtual_ip => hiera('neutron::plugins::plumgrid::director_server'),
+      rest_port => '9180',
+      mgmt_dev => hiera('plumgrid_mgmt_dev', '%AUTO_DEV%'),
+      md_ip => hiera('plumgrid_md_ip'),
+      source_net=> hiera('plumgrid_network', 'undef'),
+      before => Class['::neutron'],
     }
   }
   if hiera('neutron::enable_dhcp_agent',true) {

@@ -1,0 +1,62 @@
+heat_template_version: 2015-04-30
+
+description: >
+  PLUMgrid Fabric network. Used for most APIs, Database, RPC.
+
+parameters:
+  # the defaults here work for static IP assignment (IPAM) only
+  PgFabricNetCidr:
+    default: '172.16.2.0/24'
+    description: Cidr for the PLUMgrid Fabric API network.
+    type: string
+  PgFabricNetValueSpecs:
+    default: {'provider:physical_network': 'pg_fabric', 'provider:network_type': 'flat'}
+    description: Value specs for the PLUMgrid Fabric API network.
+    type: string
+  PgFabricNetAdminStateUp:
+    default: false
+    description: This admin state of of the network.
+    type: boolean
+  PgFabricNetEnableDHCP:
+    default: false
+    description: Whether to enable DHCP on the associated subnet.
+    type: boolean
+  PgFabricNetShared:
+    default: false
+    description: Whether this network is shared across all tenants.
+    type: boolean
+  PgFabricNetName:
+    default: pg_fabric
+    description: The name of the PLUMgrid Fabric API network.
+    type: string
+  PgFabricSubnetName:
+    default: pg_fabric_subnet
+    description: The name of the PLUMgrid Fabric API subnet in Neutron.
+    type: string
+  PgFabricAllocationPools:
+    default: [{'start': '172.16.2.4', 'end': '172.16.2.250'}]
+    description: Ip allocation pool range for the PLUMgrid Fabric API network.
+    type: json
+
+resources:
+  PgFabricNetwork:
+    type: OS::Neutron::Net
+    properties:
+      admin_state_up: {get_param: PgFabricNetAdminStateUp}
+      name: {get_param: PgFabricNetName}
+      shared: {get_param: PgFabricNetShared}
+      value_specs: {get_param: PgFabricNetValueSpecs}
+
+  PgFabricSubnet:
+    type: OS::Neutron::Subnet
+    properties:
+      cidr: {get_param: PgFabricNetCidr}
+      enable_dhcp: {get_param: PgFabricNetEnableDHCP}
+      name: {get_param: PgFabricSubnetName}
+      network: {get_resource: PgFabricNetwork}
+      allocation_pools: {get_param: PgFabricAllocationPools}
+
+outputs:
+  OS::stack_id:
+    description: Neutron PLUMgrid fabric network
+    value: {get_resource: PgFabricNetwork}

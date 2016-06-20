@@ -164,8 +164,81 @@ if hiera('neutron::core_plugin') == 'neutron.plugins.nuage.plugin.NuagePlugin' {
   #class {'::contrail::vrouter::provision_vrouter':
   #  require => Class['contrail::vrouter'],
   #}
-}
-else {
+} elsif hiera('neutron::core_plugin') == 'networking_plumgrid.neutron.plugins.plugin.NeutronPluginPLUMgridV2' {
+  # forward all ipv4 traffic
+  # this is required for the vms to pass through the gateways public interface
+  sysctl::value { 'net.ipv4.ip_forward': value => '1' }
+
+   # ifc_ctl_pp needs to be invoked by root as part of the vif.py when a VM is powered on
+   file { '/etc/sudoers.d/ifc_ctl_sudoers':
+     ensure  => file,
+     owner   => root,
+     group   => root,
+     mode    => '0440',
+     content => "nova ALL=(root) NOPASSWD: /opt/pg/bin/ifc_ctl_pp *\n",
+   }
+
+   file { '/etc/libvirt/qemu.conf':
+     ensure  => file,
+     owner   => root,
+     group   => root,
+     mode    => '0440',
+     content => "cgroup_device_acl=[\"/dev/null\",\"/dev/full\",\"/dev/zero\",\"/dev/random\",\"/dev/urandom\",\"/dev/ptmx\",\"/dev/kvm\",\"/dev/kqemu\",\"/dev/rtc\",\"/dev/hpet\",\"/dev/net/tun\"]\nclear_emulator_capabilities=0\nuser=\"root\"\ngroup=\"root\"",
+     notify => Service['libvirt']
+   }
+
+   class { '::nova::api':
+     enabled  => false,
+     neutron_metadata_proxy_shared_secret  => hiera(neutron_metadata_proxy_shared_secret),
+     admin_password  => hiera(nova_password),
+     auth_host  => hiera(nova_api_host),
+     sync_db  => false,
+     before => Service['openstack-nova-metadata-api'],
+   }
+
+   service { 'openstack-nova-metadata-api':
+    ensure => running,
+    enable => true,
+   }
+
+   $check_director_ips = hiera(plumgrid_director_mgmt_ips, 'undef')
+   if $check_director_ips == 'undef' {
+     $plumgrid_director_ips = hiera(controller_node_ips)
+   } else {
+     $plumgrid_director_ips = hiera(plumgrid_director_mgmt_ips)
+   }
+
+   # Disable NetworkManager
+   service { 'NetworkManager':
+     ensure => stopped,
+     enable => false,
+   }
+
+   # Install PLUMgrid Edge
+    class{ 'plumgrid':
+      plumgrid_ip => $plumgrid_director_ips,
+      plumgrid_port => '8001',
+      rest_port => '9180',
+      mgmt_dev => hiera('plumgrid_mgmt_dev', '%AUTO_DEV%'),
+      fabric_dev => hiera('plumgrid_fabric_dev', '%AUTO_DEV%'),
+      repo_baseurl => hiera('plumgrid_repo_baseurl'),
+      lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
+      md_ip => hiera('plumgrid_md_ip'),
+      repo_component => hiera('plumgrid_repo_component'),
+      source_net=> hiera('plumgrid_network', undef),
+      dest_net => hiera('plumgrid_network', undef),
+      manage_repo => true,
+    }
+
+    class { firewall: }
+
+    firewall {'001 nova metdata incoming':
+      proto  => 'tcp',
+      dport  => ["8775"],
+      action => 'accept',
+    }
+
+} else {
 
   # NOTE: this code won't live in puppet-neutron until Neutron OVS agent
   # can be gracefully restarted. See https://review.openstack.org/#/c/297211

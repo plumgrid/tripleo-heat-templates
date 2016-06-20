@@ -427,6 +427,20 @@ resources:
       IPPool: {get_param: NovaComputeIPs}
       NodeIndex: {get_param: NodeIndex}
 
+  PgMgmtPort:
+    type: OS::TripleO::Compute::Ports::PgMgmtPort
+    properties:
+      ControlPlaneIP: {get_attr: [NovaCompute, networks, ctlplane, 0]}
+      IPPool: {get_param: NovaComputeIPs}
+      NodeIndex: {get_param: NodeIndex}
+
+  PgFabricPort:
+    type: OS::TripleO::Compute::Ports::PgFabricPort
+    properties:
+      ControlPlaneIP: {get_attr: [NovaCompute, networks, ctlplane, 0]}
+      IPPool: {get_param: NovaComputeIPs}
+      NodeIndex: {get_param: NodeIndex}
+
   NetIpMap:
     type: OS::TripleO::Network::Ports::NetIpMap
     properties:
@@ -440,6 +454,8 @@ resources:
       StorageMgmtIp: {get_attr: [StorageMgmtPort, ip_address]}
       StorageMgmtIpUri: {get_attr: [StorageMgmtPort, ip_address_uri]}
       TenantIp: {get_attr: [TenantPort, ip_address]}
+      PgMgmtIp: {get_attr: [PgMgmtPort, ip_address]}
+      PgFabricIp: {get_attr: [PgFabricPort, ip_address]}
       TenantIpUri: {get_attr: [TenantPort, ip_address_uri]}
       ManagementIp: {get_attr: [ManagementPort, ip_address]}
       ManagementIpUri: {get_attr: [ManagementPort, ip_address_uri]}
@@ -454,6 +470,8 @@ resources:
       StorageMgmtIpSubnet: {get_attr: [StorageMgmtPort, ip_subnet]}
       TenantIpSubnet: {get_attr: [TenantPort, ip_subnet]}
       ManagementIpSubnet: {get_attr: [ManagementPort, ip_subnet]}
+      PgMgmtIpSubnet: {get_attr: [PgMgmtPort, ip_subnet]}
+      PgFabricIpSubnet: {get_attr: [PgFabricPort, ip_subnet]}
 
   NetworkDeployment:
     type: OS::TripleO::SoftwareDeployment
@@ -487,6 +505,7 @@ resources:
             - cisco_n1kv_data  # Optionally provided by ComputeExtraConfigPre
             - nova_nuage_data  # Optionally provided by ComputeExtraConfigPre
             - midonet_data # Optionally provided by AllNodesExtraConfig
+            - neutron_plumgrid_data # Optionally provided by ComputeExtraConfigPre
             - neutron_opencontrail_data  # Optionally provided by ComputeExtraConfigPre
           datafiles:
             compute_extraconfig:
@@ -752,6 +771,12 @@ outputs:
   management_ip_address:
     description: IP address of the server in the management network
     value: {get_attr: [ManagementPort, ip_address]}
+  pg_mgmt_ip_address:
+    description: IP address of the server in the pg_mgmt network
+    value: {get_attr: [PgMgmtPort, ip_address]}
+  pg_fabric_ip_address:
+    description: IP address of the server in the pg_fabric network
+    value: {get_attr: [PgFabricPort, ip_address]}
   hostname:
     description: Hostname of the server
     value: {get_attr: [NovaCompute, name]}

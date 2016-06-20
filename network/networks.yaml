@@ -21,3 +21,9 @@ resources:
 
   ManagementNetwork:
     type: OS::TripleO::Network::Management
+
+  PgFabricNetwork:
+    type: OS::TripleO::Network::PgFabric
+
+  PgMgmtNetwork:
+    type: OS::TripleO::Network::PgMgmt

@@ -46,12 +46,6 @@ parameters:
     default: ''
     type: string
     description: IP address with brackets in case of IPv6
-  PgMgmtIp:
-    default: ''
-    type: string
-  PgFabricIp:
-    default: ''
-    type: string
 
 outputs:
   net_ip_map:
@@ -66,8 +60,6 @@ outputs:
       storage_mgmt: {get_param: StorageMgmtIp}
       tenant: {get_param: TenantIp}
       management: {get_param: ManagementIp}
-      pg_mgmt: {get_param: PgMgmtIp}
-      pg_fabric: {get_param: PgFabricIp}
   net_ip_uri_map:
     description: >
       A Hash containing a mapping of netowrk names to assigned IPs for a

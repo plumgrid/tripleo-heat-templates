@@ -700,8 +700,6 @@ parameters:
       BlockStorageHostnameResolveNetwork: internal_api
       ObjectStorageHostnameResolveNetwork: internal_api
       CephStorageHostnameResolveNetwork: storage
-      PgMgmtNetwork: pg_mgmt
-      PgFabricNetwork: pg_fabric
     description: Mapping of service_name -> network name. Typically set
                  via parameter_defaults in the resource registry.
     type: json
@@ -1228,8 +1226,6 @@ resources:
       StorageMgmtIpList: {get_attr: [Controller, storage_mgmt_ip_address]}
       TenantIpList: {get_attr: [Controller, tenant_ip_address]}
       ManagementIpList: {get_attr: [Controller, management_ip_address]}
-      PgFabricIpList: {get_attr: [Controller, pg_fabric_ip_address]}
-      PgMgmtIpList: {get_attr: [Controller, pg_mgmt_ip_address]}
 
   ComputeIpListMap:
     type: OS::TripleO::Network::Ports::NetIpListMap
@@ -1238,8 +1234,6 @@ resources:
       InternalApiIpList: {get_attr: [Compute, internal_api_ip_address]}
       StorageIpList: {get_attr: [Compute, storage_ip_address]}
       TenantIpList: {get_attr: [Compute, tenant_ip_address]}
-      PgFabricIpList: {get_attr: [Compute, pg_fabric_ip_address]}
-      PgMgmtIpList: {get_attr: [Compute, pg_mgmt_ip_address]}
 
   allNodesConfig:
     type: OS::TripleO::AllNodes::SoftwareConfig
@@ -1270,10 +1264,10 @@ resources:
       keystone_admin_api_node_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, KeystoneAdminApiNetwork]}]}
       DeployIdentifier: {get_param: DeployIdentifier}
       UpdateIdentifier: {get_param: UpdateIdentifier}
-      plumgrid_director_mgmt_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgMgmtNetwork]}]}
-      plumgrid_director_fabric_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgFabricNetwork]}]}
-      plumgrid_edge_mgmt_ips: {get_attr: [ComputeIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgMgmtNetwork]}]}
-      plumgrid_edge_fabric_ips: {get_attr: [ComputeIpListMap, net_ip_map, {get_param: [ServiceNetMap, PgFabricNetwork]}]}
+      plumgrid_director_mgmt_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, NeutronApiNetwork]}]}
+      plumgrid_director_fabric_ips: {get_attr: [ControllerIpListMap, net_ip_map, {get_param: [ServiceNetMap, NeutronTenantNetwork]}]}
+      plumgrid_edge_mgmt_ips: {get_attr: [ComputeIpListMap, net_ip_map, {get_param: [ServiceNetMap, NeutronApiNetwork]}]}
+      plumgrid_edge_fabric_ips: {get_attr: [ComputeIpListMap, net_ip_map, {get_param: [ServiceNetMap, NeutronTenantNetwork]}]}
 
   MysqlRootPassword:
     type: OS::Heat::RandomString

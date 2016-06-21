@@ -12,14 +12,14 @@ parameter_defaults:
   PLUMgridPassword: password
   PLUMgridServerTimeOut: 99
 
-  PLUMgridNovaMetadataIP: 169.1.1.254
+  PLUMgridNovaMetadataIP: 169.254.1.254
   PLUMgridNovaMetadataPort: 8775
-  PLUMgridNovaMetadataSubnet: 169.1.1.254/30
+  PLUMgridNovaMetadataSubnet: 169.254.1.254/30
 
  # Parameterd for PLUMgrid zone creation
   PLUMgridRepoURL: http://127.0.0.1:81/yum
   PLUMgridRepoComponent: halfdome-510
-  PLUMgridNetwork: 127.0.0.0/24
+  InternalApiNetwork: 127.0.0.0/24
   EnablePackageInstall: true
 
  # IP address of OPSVM
@@ -36,10 +36,10 @@ parameter_defaults:
  #PLUMgridPlumlibVersion: present
 
  # Use them for split management and fabric PLUMgrid network
- # PLUMgridMgmtDevControl: br-mgmt
- # PLUMgridFabricDevControl: bond0
- # PLUMgridMgmtDevCompute: br-mgmt
- # PLUMgridFabricDevCompute: bond0
+ # InternalApiDevControl: br-intapi
+ # TenantDevControl: bond0
+ # InternalApiDevCompute: br-intapi
+ # TenantDevCompute: bond0
 
 # PLUMgrid doesn't require dhcp, l3, ovs and metadata agents
   NeutronEnableDHCPAgent: false

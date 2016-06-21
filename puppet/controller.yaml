@@ -853,20 +853,6 @@ resources:
       NodeIndex: {get_param: NodeIndex}
       ControlPlaneIP: {get_attr: [Controller, networks, ctlplane, 0]}
 
-  PgMgmtPort:
-    type: OS::TripleO::Controller::Ports::PgMgmtPort
-    properties:
-      IPPool: {get_param: ControllerIPs}
-      NodeIndex: {get_param: NodeIndex}
-      ControlPlaneIP: {get_attr: [Controller, networks, ctlplane, 0]}
-
-  PgFabricPort:
-    type: OS::TripleO::Controller::Ports::PgFabricPort
-    properties:
-      IPPool: {get_param: ControllerIPs}
-      NodeIndex: {get_param: NodeIndex}
-      ControlPlaneIP: {get_attr: [Controller, networks, ctlplane, 0]}
-
   NetIpMap:
     type: OS::TripleO::Network::Ports::NetIpMap
     properties:
@@ -880,8 +866,6 @@ resources:
       StorageMgmtIp: {get_attr: [StorageMgmtPort, ip_address]}
       StorageMgmtIpUri: {get_attr: [StorageMgmtPort, ip_address_uri]}
       TenantIp: {get_attr: [TenantPort, ip_address]}
-      PgMgmtIp: {get_attr: [PgMgmtPort, ip_address]}
-      PgFabricIp: {get_attr: [PgFabricPort, ip_address]}
       TenantIpUri: {get_attr: [TenantPort, ip_address_uri]}
       ManagementIp: {get_attr: [ManagementPort, ip_address]}
       ManagementIpUri: {get_attr: [ManagementPort, ip_address_uri]}
@@ -896,8 +880,6 @@ resources:
       StorageMgmtIpSubnet: {get_attr: [StorageMgmtPort, ip_subnet]}
       TenantIpSubnet: {get_attr: [TenantPort, ip_subnet]}
       ManagementIpSubnet: {get_attr: [ManagementPort, ip_subnet]}
-      PgMgmtIpSubnet: {get_attr: [PgMgmtPort, ip_subnet]}
-      PgFabricIpSubnet: {get_attr: [PgFabricPort, ip_subnet]}
 
   NetworkConfig:
     type: OS::TripleO::Controller::Net::SoftwareConfig
@@ -909,8 +891,6 @@ resources:
       StorageMgmtIpSubnet: {get_attr: [StorageMgmtPort, ip_subnet]}
       TenantIpSubnet: {get_attr: [TenantPort, ip_subnet]}
       ManagementIpSubnet: {get_attr: [ManagementPort, ip_subnet]}
-      PgMgmtIpSubnet: {get_attr: [PgMgmtPort, ip_subnet]}
-      PgFabricIpSubnet: {get_attr: [PgFabricPort, ip_subnet]}
 
   NetworkDeployment:
     type: OS::TripleO::SoftwareDeployment
@@ -1670,12 +1650,6 @@ outputs:
   management_ip_address:
     description: IP address of the server in the management network
     value: {get_attr: [ManagementPort, ip_address]}
-  pg_mgmt_ip_address:
-    description: IP address of the server in the pg_mgmt network
-    value: {get_attr: [PgMgmtPort, ip_address]}
-  pg_fabric_ip_address:
-    description: IP address of the server in the pg_fabric network
-    value: {get_attr: [PgFabricPort, ip_address]}
   hostname:
     description: Hostname of the server
     value: {get_attr: [Controller, name]}

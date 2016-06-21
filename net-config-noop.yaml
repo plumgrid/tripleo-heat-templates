@@ -33,14 +33,6 @@ parameters:
     default: ''
     description: IP address/subnet on the management network
     type: string
-  PgFabricIpSubnet:
-    default: ''
-    description: IP address/subnet on the pg_fabric network
-    type: string
-  PgMgmtIpSubnet:
-    default: ''
-    description: IP address/subnet on the pg_mgmt network
-    type: string
 
 resources:
   OsNetConfigImpl:

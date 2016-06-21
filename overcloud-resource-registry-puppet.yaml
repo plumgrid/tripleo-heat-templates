@@ -64,8 +64,6 @@ resource_registry:
   OS::TripleO::Network::Storage: network/noop.yaml
   OS::TripleO::Network::Tenant: network/noop.yaml
   OS::TripleO::Network::Management: network/noop.yaml
-  OS::TripleO::Network::PgFabric: network/noop.yaml
-  OS::TripleO::Network::PgMgmt: network/noop.yaml
 
   OS::TripleO::Network::Ports::NetVipMap: network/ports/net_ip_map.yaml
   OS::TripleO::Network::Ports::NetIpMap: network/ports/net_ip_map.yaml
@@ -86,8 +84,6 @@ resource_registry:
   OS::TripleO::Controller::Ports::StorageMgmtPort: network/ports/noop.yaml
   OS::TripleO::Controller::Ports::TenantPort: network/ports/noop.yaml
   OS::TripleO::Controller::Ports::ManagementPort: network/ports/noop.yaml
-  OS::TripleO::Controller::Ports::PgFabricPort: network/ports/noop.yaml
-  OS::TripleO::Controller::Ports::PgMgmtPort: network/ports/noop.yaml
 
   # Port assignments for the compute role
   OS::TripleO::Compute::Ports::ExternalPort: network/ports/noop.yaml
@@ -96,8 +92,6 @@ resource_registry:
   OS::TripleO::Compute::Ports::StorageMgmtPort: network/ports/noop.yaml
   OS::TripleO::Compute::Ports::TenantPort: network/ports/noop.yaml
   OS::TripleO::Compute::Ports::ManagementPort: network/ports/noop.yaml
-  OS::TripleO::Compute::Ports::PgFabricPort: network/ports/noop.yaml
-  OS::TripleO::Compute::Ports::PgMgmtPort: network/ports/noop.yaml
 
   # Port assignments for the ceph storage role
   OS::TripleO::CephStorage::Ports::ExternalPort: network/ports/noop.yaml

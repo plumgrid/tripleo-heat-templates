@@ -219,14 +219,14 @@ if hiera('neutron::core_plugin') == 'neutron.plugins.nuage.plugin.NuagePlugin' {
       plumgrid_ip => $plumgrid_director_ips,
       plumgrid_port => '8001',
       rest_port => '9180',
-      mgmt_dev => hiera('plumgrid_mgmt_dev', '%AUTO_DEV%'),
-      fabric_dev => hiera('plumgrid_fabric_dev', '%AUTO_DEV%'),
+      mgmt_dev => hiera('internal_api_dev', '%AUTO_DEV%'),
+      fabric_dev => hiera('tenant_dev', '%AUTO_DEV%'),
       repo_baseurl => hiera('plumgrid_repo_baseurl'),
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
       md_ip => hiera('plumgrid_md_ip'),
       repo_component => hiera('plumgrid_repo_component'),
-      source_net=> hiera('plumgrid_network', undef),
-      dest_net => hiera('plumgrid_network', undef),
+      source_net=> hiera('internal_api_network', undef),
+      dest_net => hiera('internal_api_network', undef),
       manage_repo => true,
     }
 

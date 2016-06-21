@@ -1,7 +1,7 @@
 heat_template_version: 2015-04-30
 
 description: >
-  Software Config to drive os-net-config with 2 bonded nics on a bridge.
+  Software Config to drive os-net-config with 2 bonded nics on a bridge
   With VLANS configured per network.
 
 parameters:
@@ -23,19 +23,19 @@ parameters:
     type: string
   StorageMgmtIpSubnet:
     default: ''
-    description: IP address/subnet on the storage Mgmt network
+    description: IP address/subnet on the storage mgmt network
     type: string
   TenantIpSubnet:
     default: ''
     description: IP address/subnet on the tenant network
     type: string
-  PgMgmtIpSubnet:
+  ManagementIpSubnet: # Only populated when including environments/network-management.yaml
     default: ''
-    description: IP address/subnet on the PLUMgrid management network
+    description: IP address/subnet on the management network
     type: string
-  PgFabricIpSubnet:
+  ExternalIpSubnet:
     default: ''
-    description: IP address/subnet on the PLUMgrid Fabric network
+    description: IP address/subnet on the external network
     type: string
   ControlPlaneSubnetCidr: # Override this via parameter_defaults
     default: '24'
@@ -43,10 +43,14 @@ parameters:
     type: string
   DnsServers: # Override this via parameter_defaults
     default: []
-    description: A list of DNS servers (2 max) to add to resolv.conf.
-    type: json
+    description: A list of DNS servers (2 max for some implementations) that will be added to resolv.conf.
+    type: comma_delimited_list
   EC2MetadataIp: # Override this via parameter_defaults
     description: The IP address of the EC2 metadata server.
+    type: string
+  ExternalInterfaceDefaultRoute:
+    default: '192.168.104.1'
+    description: Default route for the external network.
     type: string
   InternalApiNetworkVlanID:
     default: ''
@@ -60,13 +64,13 @@ parameters:
     default: ''
     description: Storage Management Network Vlan ID
     type: string
-  TenantNetworkVlanID:
+  ExternalNetworkVlanID:
     default: ''
-    description: Tenant Network Vlan ID
+    description: External Network Vlan ID
     type: string
-  PgMgmtNetworkVlanID:
+  ManagementNetworkVlanID:
     default: ''
-    description: PLUMgrid Management Network Vlan ID
+    description: Vlan ID for the management network traffic.
     type: string
 
 resources:
@@ -80,9 +84,19 @@ resources:
             -
               type: interface
               name: nic1
-              use_dhcp: true
-              defroute: true
+              use_dhcp: false
               dns_servers: {get_param: DnsServers}
+              addresses:
+                -
+                  ip_netmask:
+                    list_join:
+                      - '/'
+                      - - {get_param: ControlPlaneIp}
+                        - {get_param: ControlPlaneSubnetCidr}
+              routes:
+                -
+                  ip_netmask: 169.254.169.254/32
+                  next_hop: {get_param: EC2MetadataIp}
 
             -
               type: linux_bond
@@ -93,7 +107,7 @@ resources:
               mtu: 1580
               addresses:
                -
-                 ip_netmask: {get_param: PgFabricIpSubnet}
+                 ip_netmask: {get_param: TenantIpSubnet}
               members:
                    -
                      type: interface
@@ -142,26 +156,19 @@ resources:
                 vlan_id: {get_param: StorageMgmtNetworkVlanID}
 
             - type: linux_bridge
-              name: br-tenant
+              name: br-ex
               mtu: 1500
+              routes:
+                - ip_netmask: 0.0.0.0/0
+                  default: true
+                  next_hop: {get_param: ExternalInterfaceDefaultRoute}
               addresses:
-                - ip_netmask: {get_param: TenantIpSubnet}
+                - ip_netmask: {get_param: ExternalIpSubnet}
               members:
-              - type: vlan
-                mtu: 1500
-                device: bond0
-                vlan_id: {get_param: TenantNetworkVlanID}
-
-            - type: linux_bridge
-              name: br-mgmt
-              mtu: 1500
-              addresses:
-                - ip_netmask: {get_param: PgMgmtIpSubnet}
-              members:
-              - type: vlan
-                mtu: 1500
-                device: bond0
-                vlan_id: {get_param: PgMgmtNetworkVlanID}
+                - type: vlan
+                  mtu: 1500
+                  device: bond0
+                  vlan_id: {get_param: ExternalNetworkVlanID}
 
 
 outputs:

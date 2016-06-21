@@ -815,7 +815,7 @@ if hiera('step') >= 3 {
     }
 
     # Configure new parameters for pglib
-    $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.1.1.254/30')
+    $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.254.1.254/30')
     exec { 'pg_lib metadata subnet':
     command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
     path    => [ '/usr/local/bin/', '/bin/' ],
@@ -827,15 +827,15 @@ if hiera('step') >= 3 {
       plumgrid_ip => $plumgrid_director_ips,
       plumgrid_port => '8001',
       rest_port => '9180',
-      mgmt_dev => hiera('plumgrid_mgmt_dev', '%AUTO_DEV%'),
-      fabric_dev => hiera('plumgrid_fabric_dev', '%AUTO_DEV%'),
+      mgmt_dev => hiera('internal_api_dev', '%AUTO_DEV%'),
+      fabric_dev => hiera('tenant_dev', '%AUTO_DEV%'),
       repo_baseurl => hiera('plumgrid_repo_baseurl'),
       repo_component => hiera('plumgrid_repo_component'),
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
       md_ip => hiera('plumgrid_md_ip'),
       manage_repo => true,
-      source_net=> hiera('plumgrid_network', 'undef'),
-      dest_net => hiera('plumgrid_network', 'undef'),
+      source_net=> hiera('internal_api_network', 'undef'),
+      dest_net => hiera('internal_api_network', 'undef'),
       before => Class['::neutron'],
     }
 
@@ -843,9 +843,9 @@ if hiera('step') >= 3 {
       plumgrid_ip => $plumgrid_director_ips,
       virtual_ip => hiera('neutron::plugins::plumgrid::director_server'),
       rest_port => '9180',
-      mgmt_dev => hiera('plumgrid_mgmt_dev', '%AUTO_DEV%'),
+      mgmt_dev => hiera('internal_api_dev', '%AUTO_DEV%'),
       md_ip => hiera('plumgrid_md_ip'),
-      source_net=> hiera('plumgrid_network', 'undef'),
+      source_net=> hiera('internal_api_network', 'undef'),
       before => Class['::neutron'],
     }
   }

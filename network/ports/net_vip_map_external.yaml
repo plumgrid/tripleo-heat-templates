@@ -17,12 +17,6 @@ parameters:
   StorageMgmtNetworkVip:
     default: ''
     type: string
-  PgMgmtNetworkVip:
-    default: ''
-    type: string
-  PgFabricNetworkVip:
-    default: ''
-    type: string
   # The following are unused in this template
   ControlPlaneIp:
     default: ''
@@ -57,13 +51,6 @@ parameters:
   TenantIpUri:
     default: ''
     type: string
-  PgMgmtIp:
-    default: ''
-    type: string
-  PgFabricIp:
-    default: ''
-    type: string
-
 
 outputs:
   net_ip_map:
@@ -76,8 +63,6 @@ outputs:
       internal_api: {get_param: InternalApiNetworkVip}
       storage: {get_param: StorageNetworkVip}
       storage_mgmt: {get_param: StorageMgmtNetworkVip}
-      pg_fabric: {get_param: PgFabricNetworkVip}
-      pg_mgmt:  {get_param: PgMgmtNetworkVip}
   net_ip_uri_map:
     description: >
       A Hash containing a mapping of netowrk names to assigned IPs for a

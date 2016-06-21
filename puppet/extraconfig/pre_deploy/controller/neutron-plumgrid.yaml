@@ -28,7 +28,7 @@ parameters:
   PLUMgridNovaMetadataIP:
     description: IP address of Nova Metadata
     type: string
-    default: 169.1.1.254
+    default: 169.254.1.254
   PLUMgridNovaMetadataPort:
     description: Port of Nova Metadata
     type: string
@@ -36,7 +36,7 @@ parameters:
   PLUMgridNovaMetadataSubnet:
     description: Subnet for PLUMgrid Metadata
     type: string
-    default: 169.1.1.254/30
+    default: 169.254.1.254/30
   PLUMgridRepoURL:
     description: URL for PLUMgrid Repository
     type: string
@@ -45,15 +45,15 @@ parameters:
     description: Repository component for PLUMgrid Repository
     type: string
     default: halfdome-510
-  PLUMgridNetwork:
-    description: CIDR of PLUMgrid Network
+  InternalApiNetwork:
+    description: CIDR of Internal Api Network (Mapped to PLUMgrid mgmt)
     type: string
     default: 127.0.0.1/24
-  PLUMgridMgmtDevControl:
+  InternalApiDevControl:
     description: Device for PLUMgrid Management Network
     type: string
     default: ''
-  PLUMgridFabricDevControl:
+  TenantDevControl:
     description: Device for PLUMgrid Fabric Network
     type: string
     default: ''
@@ -72,7 +72,7 @@ parameters:
   PLUMgridL2GatewayPassword:
     description: Password for L2 Gateway Switch
     type: string
-    default: username
+    default: password
     hidden: true
   PLUMgridIdentityVersion:
     description: Keystone Identity version
@@ -115,12 +115,12 @@ resources:
                 neutron::plugins::plumgrid::identity_version: {get_input: plumgrid_identity_version}
                 neutron::plugins::plumgrid::package_ensure: {get_input: plumgrid_neutron_plugin_version}
                 neutron::plugins::plumgrid::plumlib_package_ensure: {get_input: plumgrid_plumlib_version}
-                plumgrid_mgmt_dev: {get_input: plumgrid_mgmt_dev}
-                plumgrid_fabric_dev: {get_input: plumgrid_fabric_dev}
+                internal_api_dev: {get_input: internal_api_dev}
+                tenant_dev: {get_input: tenant_dev}
                 plumgrid_repo_baseurl: {get_input: plumgrid_repo_url}
                 plumgrid_repo_component: {get_input: plumgrid_repo_component}
                 plumgrid_virtual_ip: {get_input: plumgrid_director_server}
-                plumgrid_network: {get_input: plumgrid_network}
+                internal_api_network: {get_input: internal_api_network}
                 plumgrid_nova_metadata_subnet: {get_input: plumgrid_nova_metadata_subnet}
                 plumgrid_md_ip: {get_input: plumgrid_md_ip}
 
@@ -145,9 +145,9 @@ resources:
         plumgrid_plumlib_version: {get_param: PLUMgridPlumlibVersion}
         plumgrid_repo_url: {get_param: PLUMgridRepoURL}
         plumgrid_repo_component: {get_param: PLUMgridRepoComponent}
-        plumgrid_network: {get_param: PLUMgridNetwork}
-        plumgrid_mgmt_dev: {get_param: PLUMgridMgmtDevControl}
-        plumgrid_fabric_dev: {get_param: PLUMgridFabricDevControl}
+        internal_api_network: {get_param: InternalApiNetwork}
+        internal_api_dev: {get_param: InternalApiDevControl}
+        tenant_dev: {get_param: TenantDevControl}
         plumgrid_nova_metadata_subnet: {get_param: PLUMgridNovaMetadataSubnet}
         plumgrid_md_ip: {get_param: OPSVMIP}
 

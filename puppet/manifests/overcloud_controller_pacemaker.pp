@@ -822,6 +822,22 @@ if hiera('step') >= 3 {
     before => Class['::neutron'],
     }
 
+    # Configure new parameters for python-keystoneclient versions 1.7.0 and above
+    $user_domain_name = 'Default'
+    exec { 'keystone_authtoken user_domain_name config':
+    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini keystone_authtoken user_domain_name ${user_domain_name}",
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['::neutron'],
+    }
+
+    # Configure new parameters for python-keystoneclient versions 1.7.0 and above
+    $project_domain_name = 'Default'
+    exec { 'keystone_authtoken project_domain_name config':
+    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini keystone_authtoken project_domain_name ${project_domain_name}",
+    path    => [ '/usr/local/bin/', '/bin/' ],
+    before => Class['::neutron'],
+    }
+
     # Install PLUMgrid Director
     class{'plumgrid':
       plumgrid_ip => $plumgrid_director_ips,

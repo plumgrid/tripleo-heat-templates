@@ -5,43 +5,57 @@ resource_registry:
   OS::TripleO::ComputeExtraConfigPre: ../puppet/extraconfig/pre_deploy/compute/neutron-plumgrid.yaml
 
 parameter_defaults:
+  # Neutron Core Plugin (Don't change)
   NeutronCorePlugin: networking_plumgrid.neutron.plugins.plugin.NeutronPluginPLUMgridV2
+  # PLUMgrid Directors Virtual IP to access PLUMgrid console
+  # Provide any IP from PLUMgrid Management(Internal Api) network but not in dhcp pool
   PLUMgridDirectorServer: 127.0.0.1
+  # Port of the PLUMgrid Director Server. (Don't change)
   PLUMgridDirectorServerPort: 443
+  # PLUMgrid platform username (get it from PLUMgrid)
   PLUMgridUsername: username
+  # PLUMgrid platform password (get it from PLUMgrid)
   PLUMgridPassword: password
+  # Request timeout duration (seconds) to PLUMgrid paltform (Don't change)
   PLUMgridServerTimeOut: 99
 
+  # PLUMgrid Nova Metadata IP, port and subnet (Don't change)
   PLUMgridNovaMetadataIP: 169.254.1.254
   PLUMgridNovaMetadataPort: 8775
   PLUMgridNovaMetadataSubnet: 169.254.1.254/30
 
- # Parameterd for PLUMgrid zone creation
+  # PLUMgrid packages repo URL
   PLUMgridRepoURL: http://127.0.0.1:81/yum
   PLUMgridRepoComponent: halfdome-510
+  # PLUMgrid Management(Internal Api) network for firewall configurations
   InternalApiNetwork: 127.0.0.0/24
+  # Enable PLUMgrid package install (Don't change)
   EnablePackageInstall: true
 
- # IP address of OPSVM
+  # IP address of OPSVM
  # OPSVMIP: 127.0.0.1
 
+  # For L2 Gateway support
  # PLUMgridL2GatewayVendor: vendor
  # PLUMgridL2GatewayUsername: username
  # PLUMgridL2GatewayPassword: password
+
+  # Ketstone Indentity Version (Don't change)
  # PLUMgridIdentityVersion: v2.0
+  # Neutron network connector type (Don't change)
  # PLUMgridConnectorType: distributed
 
- #Optional Parameters
- #PLUMgridNeutronPluginVersion: present
- #PLUMgridPlumlibVersion: present
+  # Optional Parameters (Don't change)
+ # PLUMgridNeutronPluginVersion: present
+ # PLUMgridPlumlibVersion: present
 
- # Use them for split management and fabric PLUMgrid network
- # InternalApiDevControl: br-intapi
- # TenantDevControl: bond0
- # InternalApiDevCompute: br-intapi
- # TenantDevCompute: bond0
+  # PLUMgrid Management(Internal Api) and PLUMgrid Fabric(Tenant) network interfaces
+  InternalApiDevControl: br-intapi
+  TenantDevControl: bond0
+  InternalApiDevCompute: br-intapi
+  TenantDevCompute: bond0
 
-# PLUMgrid doesn't require dhcp, l3, ovs and metadata agents
+  # PLUMgrid doesn't require dhcp, l3, ovs and metadata agents (Don't change)
   NeutronEnableDHCPAgent: false
   NeutronEnableL3Agent: false
   NeutronEnableMetadataAgent: false

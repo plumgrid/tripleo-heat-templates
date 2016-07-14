@@ -760,17 +760,24 @@ if hiera('step') >= 3 {
       service_plugins => [],
     }
 
+    include ::neutron::config
+    class { '::neutron::server' :
+      sync_db            => $sync_db,
+      manage_service     => false,
+      enabled            => false,
+      api_workers        => '4',
+    }
   } else {
     # Neutron class definitions
     include ::neutron
+    include ::neutron::config
+    class { '::neutron::server' :
+      sync_db        => $sync_db,
+      manage_service => false,
+      enabled        => false,
+    }
   }
 
-  include ::neutron::config
-  class { '::neutron::server' :
-    sync_db        => $sync_db,
-    manage_service => false,
-    enabled        => false,
-  }
   include ::neutron::server::notifications
 
   if  hiera('neutron::core_plugin') == 'neutron.plugins.nuage.plugin.NuagePlugin' {

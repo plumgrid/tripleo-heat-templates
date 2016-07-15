@@ -13,7 +13,7 @@ parameters:
   PLUMgridRepoComponent:
     description: Repository component for PLUMgrid Repository
     type: string
-    default: halfdome-510
+    default: halfdome-511
   InternalApiNetwork:
     description: CIDR of Internal Api Network (Mapped to PLUMgrid mgmt)
     type: string

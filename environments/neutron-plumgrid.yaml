@@ -26,7 +26,7 @@ parameter_defaults:
 
   # PLUMgrid packages repo URL
   PLUMgridRepoURL: http://127.0.0.1:81/yum
-  PLUMgridRepoComponent: halfdome-510
+  PLUMgridRepoComponent: halfdome-511
   # PLUMgrid Management(Internal Api) network for firewall configurations
   InternalApiNetwork: 127.0.0.0/24
   # Enable PLUMgrid package install (Don't change)

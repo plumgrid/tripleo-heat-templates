@@ -19,7 +19,7 @@ parameter_defaults:
 
  # Parameterd for PLUMgrid zone creation
   PLUMgridRepoURL: http://127.0.0.1:81/yum
-  PLUMgridRepoComponent: halfdome-510
+  PLUMgridRepoComponent: halfdome-511
   PLUMgridNetwork: 127.0.0.0/24
   EnablePackageInstall: true
 

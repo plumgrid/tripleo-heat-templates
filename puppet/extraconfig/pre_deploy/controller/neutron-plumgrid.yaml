@@ -45,7 +45,7 @@ parameters:
   PLUMgridRepoComponent:
     description: Repository component for PLUMgrid Repository
     type: string
-    default: fuji
+    default: halfdome-511
   PLUMgridNetwork:
     description: CIDR of PLUMgrid Network
     type: string

@@ -867,13 +867,27 @@ if hiera('step') >= 3 {
     before => Class['::neutron'],
     }
 
+    $check_internal_api_dev = hiera('internal_api_dev', 'undef')
+    if $check_internal_api_dev == 'undef' {
+      $mgmt_dev = dev_for_network(hiera('internal_api_network'))
+    } else {
+      $mgmt_dev = hiera('internal_api_dev', '%AUTO_DEV%')
+    }
+
+    $check_tenant_dev = hiera('tenant_dev', 'undef')
+    if $check_tenant_dev == 'undef' {
+      $fabric_dev = dev_for_network(hiera('tenant_network'))
+    } else {
+      $fabric_dev = hiera('tenant_dev', '%AUTO_DEV%')
+    }
+
     # Install PLUMgrid Director
     class{'plumgrid':
       plumgrid_ip => $plumgrid_director_ips,
       plumgrid_port => '8001',
       rest_port => '9180',
-      mgmt_dev => hiera('internal_api_dev', '%AUTO_DEV%'),
-      fabric_dev => hiera('tenant_dev', '%AUTO_DEV%'),
+      mgmt_dev => $mgmt_dev,
+      fabric_dev => $fabric_dev,
       repo_baseurl => hiera('plumgrid_repo_baseurl'),
       repo_component => hiera('plumgrid_repo_component'),
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',

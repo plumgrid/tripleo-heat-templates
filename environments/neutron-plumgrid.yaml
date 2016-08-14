@@ -29,6 +29,8 @@ parameter_defaults:
   PLUMgridRepoComponent: halfdome-511
   # PLUMgrid Management(Internal Api) network for firewall configurations
   InternalApiNetwork: 127.0.0.0/24
+  # PLUMgrid Fabric(Tenant) network
+  TenantNetwork: 127.0.0.0/24
   # Enable PLUMgrid package install (Don't change)
   EnablePackageInstall: true
 
@@ -50,10 +52,11 @@ parameter_defaults:
  # PLUMgridPlumlibVersion: present
 
   # PLUMgrid Management(Internal Api) and PLUMgrid Fabric(Tenant) network interfaces
-  InternalApiDevControl: br-intapi
-  TenantDevControl: bond0
-  InternalApiDevCompute: br-intapi
-  TenantDevCompute: bond0
+  # If not provided, interfaces will be auto detected based on InternalApiNetwork and TenantNetwork
+ # InternalApiDevControl: br-intapi
+ # TenantDevControl: bond0
+ # InternalApiDevCompute: br-intapi
+ # TenantDevCompute: bond0
 
   # PLUMgrid doesn't require dhcp, l3, ovs and metadata agents (Don't change)
   NeutronEnableDHCPAgent: false

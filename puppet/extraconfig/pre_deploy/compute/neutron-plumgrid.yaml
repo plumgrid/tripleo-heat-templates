@@ -18,6 +18,10 @@ parameters:
     description: CIDR of Internal Api Network (Mapped to PLUMgrid mgmt)
     type: string
     default: 127.0.0.1/24
+  TenantNetwork:
+    description: CIDR of Tenant Network (Mapped to PLUMgrid fabric)
+    type: string
+    default: 127.0.0.1/24
   InternalApiDevCompute:
     description: Device for Internal Api Network
     type: string
@@ -46,6 +50,7 @@ resources:
                 plumgrid_repo_baseurl: {get_input: plumgrid_repo_url}
                 plumgrid_repo_component: {get_input: plumgrid_repo_component}
                 internal_api_network: {get_input: internal_api_network}
+                tenant_network: {get_input: tenant_network}
                 plumgrid_md_ip: {get_input: plumgrid_md_ip}
 
   ComputePLUMgridDeployment:
@@ -57,6 +62,7 @@ resources:
         plumgrid_repo_url: {get_param: PLUMgridRepoURL}
         plumgrid_repo_component: {get_param: PLUMgridRepoComponent}
         internal_api_network: {get_param: InternalApiNetwork}
+        tenant_network: {get_param: TenantNetwork}
         internal_api_dev: {get_param: InternalApiDevCompute}
         tenant_dev: {get_param: TenantDevCompute}
         plumgrid_md_ip: {get_param: OPSVMIP}

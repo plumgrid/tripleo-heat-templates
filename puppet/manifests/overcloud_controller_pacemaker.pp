@@ -795,6 +795,18 @@ if hiera('step') >= 3 {
   }
   if hiera('neutron::core_plugin') == 'networking_plumgrid.neutron.plugins.plugin.NeutronPluginPLUMgridV2' {
 
+    $plumgrid_repo_baseurl = hiera('plumgrid_repo_baseurl')
+    $plumgrid_repo_component = hiera('plumgrid_repo_component')
+
+    yumrepo { 'plumgrid-openstack':
+      baseurl => "$plumgrid_repo_baseurl/openstack/rpm/$plumgrid_repo_component/liberty/x86_64",
+      descr => 'PLUMgrid Openstack Repo',
+      enabled => 1,
+      gpgcheck => 1,
+      gpgkey => "$plumgrid_repo_baseurl/openstack/rpm/GPG-KEY",
+      before => Class['::neutron::plugins::plumgrid'],
+    }
+
     class { '::neutron::plugins::plumgrid' :
       connection                   => hiera('neutron::server::database_connection'),
       controller_priv_host         => hiera('keystone_admin_api_vip'),
@@ -824,47 +836,47 @@ if hiera('step') >= 3 {
     # Configure new parameters for pglib
     $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.254.1.254/30')
     exec { 'pg_lib metadata subnet':
-    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
-    path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['::neutron'],
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
     }
 
     # Configure new parameters for plugin
     $gw_vendor = hiera(neutron::plugins::plumgrid::l2gateway_vendor)
     exec { 'pg l2 vendor':
-    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway vendor ${gw_vendor}",
-    path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['::neutron'],
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway vendor ${gw_vendor}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
     }
 
     $sw_username = hiera(neutron::plugins::plumgrid::l2gateway_sw_username)
     exec { 'pg l2 username':
-    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_username ${sw_username}",
-    path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['::neutron'],
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_username ${sw_username}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
     }
 
     $sw_password = hiera(neutron::plugins::plumgrid::l2gateway_sw_password)
     exec { 'pg l2 password':
-    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_password ${sw_password}",
-    path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['::neutron'],
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumgrid.ini l2gateway sw_password ${sw_password}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
     }
 
     # Configure new parameters for python-keystoneclient versions 1.7.0 and above
     $user_domain_name = 'Default'
     exec { 'keystone_authtoken user_domain_name config':
-    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini keystone_authtoken user_domain_name ${user_domain_name}",
-    path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['::neutron'],
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini keystone_authtoken user_domain_name ${user_domain_name}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
     }
 
     # Configure new parameters for python-keystoneclient versions 1.7.0 and above
     $project_domain_name = 'Default'
     exec { 'keystone_authtoken project_domain_name config':
-    command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini keystone_authtoken project_domain_name ${project_domain_name}",
-    path    => [ '/usr/local/bin/', '/bin/' ],
-    before => Class['::neutron'],
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini keystone_authtoken project_domain_name ${project_domain_name}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
     }
 
     $check_internal_api_dev = hiera('internal_api_dev', 'undef')
@@ -888,8 +900,8 @@ if hiera('step') >= 3 {
       rest_port => '9180',
       mgmt_dev => $mgmt_dev,
       fabric_dev => $fabric_dev,
-      repo_baseurl => hiera('plumgrid_repo_baseurl'),
-      repo_component => hiera('plumgrid_repo_component'),
+      repo_baseurl => "$plumgrid_repo_baseurl/yum",
+      repo_component => $plumgrid_repo_component,
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
       md_ip => hiera('plumgrid_md_ip'),
       manage_repo => true,

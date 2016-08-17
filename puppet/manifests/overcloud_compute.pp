@@ -228,6 +228,9 @@ if hiera('neutron::core_plugin') == 'neutron.plugins.nuage.plugin.NuagePlugin' {
      $fabric_dev = hiera('tenant_dev', '%AUTO_DEV%')
    }
 
+   $plumgrid_repo_baseurl = hiera('plumgrid_repo_baseurl')
+   $plumgrid_repo_component = hiera('plumgrid_repo_component')
+
    # Install PLUMgrid Edge
     class{ 'plumgrid':
       plumgrid_ip => $plumgrid_director_ips,
@@ -235,10 +238,10 @@ if hiera('neutron::core_plugin') == 'neutron.plugins.nuage.plugin.NuagePlugin' {
       rest_port => '9180',
       mgmt_dev => $mgmt_dev,
       fabric_dev => $fabric_dev,
-      repo_baseurl => hiera('plumgrid_repo_baseurl'),
+      repo_baseurl => "$plumgrid_repo_baseurl/yum",
       lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
       md_ip => hiera('plumgrid_md_ip'),
-      repo_component => hiera('plumgrid_repo_component'),
+      repo_component => $plumgrid_repo_component,
       source_net=> hiera('internal_api_network', undef),
       dest_net => hiera('internal_api_network', undef),
       manage_repo => true,

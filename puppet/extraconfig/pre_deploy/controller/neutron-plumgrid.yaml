@@ -89,7 +89,7 @@ parameters:
   PLUMgridNeutronPluginVersion:
     description: PLUMgrid Neutron Plugin version
     type: string
-    default: absent
+    default: present
   PLUMgridPlumlibVersion:
     description: PLUMgrid Plumlib version
     type: string

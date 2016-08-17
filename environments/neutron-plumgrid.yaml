@@ -25,8 +25,8 @@ parameter_defaults:
   PLUMgridNovaMetadataSubnet: 169.254.1.254/30
 
   # PLUMgrid packages repo URL
-  PLUMgridRepoURL: http://127.0.0.1:81/yum
-  PLUMgridRepoComponent: halfdome-511
+  PLUMgridRepoURL: http://127.0.0.1:81
+  PLUMgridRepoComponent: icebox-600
   # PLUMgrid Management(Internal Api) network for firewall configurations
   InternalApiNetwork: 127.0.0.0/24
   # PLUMgrid Fabric(Tenant) network
@@ -48,8 +48,8 @@ parameter_defaults:
  # PLUMgridConnectorType: distributed
 
   # Optional Parameters (Don't change)
- # PLUMgridNeutronPluginVersion: present
- # PLUMgridPlumlibVersion: present
+  PLUMgridNeutronPluginVersion: present
+  PLUMgridPlumlibVersion: present
 
   # PLUMgrid Management(Internal Api) and PLUMgrid Fabric(Tenant) network interfaces
   # If not provided, interfaces will be auto detected based on InternalApiNetwork and TenantNetwork

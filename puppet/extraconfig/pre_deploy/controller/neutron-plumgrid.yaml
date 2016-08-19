@@ -94,6 +94,14 @@ parameters:
     description: PLUMgrid Plumlib version
     type: string
     default: present
+  PLUMgridReverseFlowTap:
+    description: PLUMgrid Plumlib enable reverse flow tap
+    type: string
+    default: True
+  PLUMgridNovaMetaConfig:
+    description: PLUMgrid Plumlib nova metaconfig
+    type: string
+    default: True
 
 
 resources:
@@ -127,6 +135,8 @@ resources:
                 internal_api_network: {get_input: internal_api_network}
                 tenant_network: {get_input: tenant_network}
                 plumgrid_nova_metadata_subnet: {get_input: plumgrid_nova_metadata_subnet}
+                plumgrid_nova_metaconfig: {get_input: plumgrid_nova_metaconfig}
+                plumgrid_reverse_flow_tap: {get_input: plumgrid_reverse_flow_tap}
                 plumgrid_md_ip: {get_input: plumgrid_md_ip}
 
   ControllerPLUMgridDeployment:
@@ -155,6 +165,8 @@ resources:
         internal_api_dev: {get_param: InternalApiDevControl}
         tenant_dev: {get_param: TenantDevControl}
         plumgrid_nova_metadata_subnet: {get_param: PLUMgridNovaMetadataSubnet}
+        plumgrid_nova_metaconfig: {get_param: PLUMgridNovaMetaConfig}
+        plumgrid_reverse_flow_tap: {get_param: PLUMgridReverseFlowTap}
         plumgrid_md_ip: {get_param: OPSVMIP}
 
 outputs:

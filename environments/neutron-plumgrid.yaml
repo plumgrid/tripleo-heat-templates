@@ -50,6 +50,8 @@ parameter_defaults:
   # Optional Parameters (Don't change)
   PLUMgridNeutronPluginVersion: present
   PLUMgridPlumlibVersion: present
+  PLUMgridNovaMetaConfig: True
+  PLUMgridReverseFlowTap: True
 
   # PLUMgrid Management(Internal Api) and PLUMgrid Fabric(Tenant) network interfaces
   # If not provided, interfaces will be auto detected based on InternalApiNetwork and TenantNetwork

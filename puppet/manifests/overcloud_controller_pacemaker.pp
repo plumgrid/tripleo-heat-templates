@@ -841,6 +841,22 @@ if hiera('step') >= 3 {
       require => Class['::neutron::plugins::plumgrid'],
     }
 
+    # Configure new parameters for pglib
+    $metaconfig = hiera(plumgrid_nova_metaconfig)
+    exec { 'pg_lib nova_metaconfig':
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridLibrary nova_metaconfig $metaconfig",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
+    }
+
+    # Configure new parameters for pglib
+    $reverse_flow_tap = hiera(plumgrid_reverse_flow_tap)
+    exec { 'pg_lib enable_reverse_flow':
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridLibrary enable_reverse_flow_tap $reverse_flow_tap",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
+    }
+
     # Configure new parameters for plugin
     $gw_vendor = hiera(neutron::plugins::plumgrid::l2gateway_vendor)
     exec { 'pg l2 vendor':

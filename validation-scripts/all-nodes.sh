@@ -17,7 +17,7 @@ function ping_controller_ips() {
       in_network=$(python -c "import ipaddr; net=ipaddr.IPNetwork('$LOCAL_NETWORK'); addr=ipaddr.IPAddress('$REMOTE_IP'); print(addr in net)")
       if [[ $in_network == "True" ]]; then
         echo -n "Trying to ping $REMOTE_IP for local network $LOCAL_NETWORK..."
-        if ! $ping -W 300 -c 1 $REMOTE_IP &> /dev/null; then
+        if ! $ping -W 300 -c 5 $REMOTE_IP &> /dev/null; then
           echo "FAILURE"
           echo "$REMOTE_IP is not pingable. Local Network: $LOCAL_NETWORK" >&2
           exit 1

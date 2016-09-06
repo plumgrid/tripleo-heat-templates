@@ -7,7 +7,7 @@ if ! hostname | grep compute &>/dev/null; then
  exit 0
 fi
 
-mkdir -p /var/lib/etc-data/ #FIXME: this should be a docker data container
+mkdir -p /var/lib/etc-data/json-config #FIXME: this should be a docker data container
 
 # heat-docker-agents service
 cat <<EOF > /etc/systemd/system/heat-docker-agents.service
@@ -38,31 +38,22 @@ EOF
 #echo "ADD_REGISTRY='--registry-mirror $docker_registry'" >> /etc/sysconfig/docker
 
 # Local docker registry 1.8
-#/bin/sed -i s/ADD_REGISTRY/#ADD_REGISTRY/ /etc/sysconfig/docker
+if [ $docker_namespace_is_registry ]; then
+    # if namespace is used with local registry, trim all namespacing
+    trim_var=$docker_registry
+    registry_host="${trim_var%%/*}"
+    /bin/sed -i "s/# INSECURE_REGISTRY='--insecure-registry'/INSECURE_REGISTRY='--insecure-registry $registry_host'/g" /etc/sysconfig/docker
+fi
 
 /sbin/setenforce 0
 /sbin/modprobe ebtables
 
-# Create /var/lib/etc-data for now.  FIXME: This should go into a data container.
-#mkdir -p /var/lib/etc-data
-
-echo nameserver 8.8.8.8 > /etc/resolv.conf
+# CentOS sets ptmx to 000. Withoutit being 666, we can't use Cinder volumes
+chmod 666 /dev/pts/ptmx
 
 # We need hostname -f to return in a centos container for the puppet hook
 HOSTNAME=$(hostname)
 echo "127.0.0.1 $HOSTNAME.localdomain $HOSTNAME" >> /etc/hosts
-
-# Another hack.. we need latest docker..
-/usr/bin/systemctl stop docker.service
-/bin/curl -o /tmp/docker https://get.docker.com/builds/Linux/x86_64/docker-latest
-/bin/mount -o remount,rw /usr
-/bin/rm /bin/docker
-/bin/cp /tmp/docker /bin/docker
-/bin/chmod 755 /bin/docker
-
-# enable and start docker
-/usr/bin/systemctl enable docker.service
-/usr/bin/systemctl restart --no-block docker.service
 
 # enable and start heat-docker-agents
 chmod 0640 /etc/systemd/system/heat-docker-agents.service
@@ -72,3 +63,22 @@ chmod 0640 /etc/systemd/system/heat-docker-agents.service
 # Disable NetworkManager and let the ifup/down scripts work properly.
 /usr/bin/systemctl disable NetworkManager
 /usr/bin/systemctl stop NetworkManager
+
+# Atomic's root partition & logical volume defaults to 3G.  In order to launch
+# larger VMs, we need to enlarge the root logical volume and scale down the
+# docker_pool logical volume. We are allocating 80% of the disk space for
+# vm data and the remaining 20% for docker images.
+ATOMIC_ROOT='/dev/mapper/atomicos-root'
+ROOT_DEVICE=`pvs -o vg_name,pv_name --no-headings | grep atomicos | awk '{ print $2}'`
+
+growpart $( echo "${ROOT_DEVICE}" | sed -r 's/([^0-9]*)([0-9]+)/\1 \2/' )
+pvresize "${ROOT_DEVICE}"
+lvresize -l +80%FREE "${ATOMIC_ROOT}"
+xfs_growfs "${ATOMIC_ROOT}"
+
+cat <<EOF > /etc/sysconfig/docker-storage-setup
+GROWPART=true
+AUTO_EXTEND_POOL=yes
+POOL_AUTOEXTEND_PERCENT=30
+POOL_AUTOEXTEND_THRESHOLD=70
+EOF

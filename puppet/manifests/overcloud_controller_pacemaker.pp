@@ -805,18 +805,31 @@ MYSQL_HOST=localhost\n",
       service_plugins => []
     }
 
-  }
-  else {
+  } elsif hiera('neutron::core_plugin') == 'networking_plumgrid.neutron.plugins.plugin.NeutronPluginPLUMgridV2' {
+
+    # Neutron class definitions
+    class{'::neutron':
+      service_plugins => [],
+    }
+
+    include ::neutron::config
+    class { '::neutron::server' :
+      sync_db            => $sync_db,
+      manage_service     => false,
+      enabled            => false,
+      api_workers        => '4',
+    }
+  } else {
     # Neutron class definitions
     include ::neutron
+    include ::neutron::config
+    class { '::neutron::server' :
+      sync_db        => $sync_db,
+      manage_service => false,
+      enabled        => false,
+    }
   }
 
-  include ::neutron::config
-  class { '::neutron::server' :
-    sync_db        => $sync_db,
-    manage_service => false,
-    enabled        => false,
-  }
   include ::neutron::server::notifications
   if  hiera('neutron::core_plugin') == 'neutron.plugins.nuage.plugin.NuagePlugin' {
     include ::neutron::plugins::nuage
@@ -832,11 +845,124 @@ MYSQL_HOST=localhost\n",
     }
   }
   if hiera('neutron::core_plugin') == 'networking_plumgrid.neutron.plugins.plugin.NeutronPluginPLUMgridV2' {
+
+    $plumgrid_repo_baseurl = hiera('plumgrid_repo_baseurl')
+    $plumgrid_repo_component = hiera('plumgrid_repo_component')
+
+    yumrepo { 'plumgrid-openstack':
+      baseurl => "$plumgrid_repo_baseurl/openstack/rpm/$plumgrid_repo_component/mitaka/x86_64",
+      descr => 'PLUMgrid Openstack Repo',
+      enabled => 1,
+      gpgcheck => 1,
+      gpgkey => "$plumgrid_repo_baseurl/openstack/rpm/GPG-KEY",
+      before => Class['::neutron::plugins::plumgrid'],
+    }
+
     class { '::neutron::plugins::plumgrid' :
       connection                   => hiera('neutron::server::database_connection'),
       controller_priv_host         => hiera('keystone_admin_api_vip'),
       admin_password               => hiera('admin_password'),
       metadata_proxy_shared_secret => hiera('nova::api::neutron_metadata_proxy_shared_secret'),
+    }
+
+    #TODO: Notification engine won't be turned on
+    #Untill https://bugzilla.redhat.com/show_bug.cgi?id=1292182
+    #gets fixed.
+    #include ::neutron::server::notifications
+    include ::neutron::plugins::plumgrid
+
+    $check_director_ips = hiera(plumgrid_director_mgmt_ips, 'undef')
+    if $check_director_ips == 'undef' {
+      $plumgrid_director_ips = hiera(controller_node_ips)
+    } else {
+      $plumgrid_director_ips = hiera(plumgrid_director_mgmt_ips)
+    }
+
+    # Disable NetworkManager
+    service { 'NetworkManager':
+      ensure => stopped,
+      enable => false,
+    }
+
+    # Configure new parameters for pglib
+    $metadata_sub = hiera(plumgrid_nova_metadata_subnet, '169.254.1.254/30')
+    exec { 'pg_lib metadata subnet':
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridMetadata nova_metadata_subnet ${metadata_sub}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
+    }
+
+    # Configure new parameters for pglib
+    $metaconfig = hiera(plumgrid_nova_metaconfig)
+    exec { 'pg_lib nova_metaconfig':
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridLibrary nova_metaconfig $metaconfig",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
+    }
+
+    # Configure new parameters for pglib
+    $reverse_flow_tap = hiera(plumgrid_reverse_flow_tap)
+    exec { 'pg_lib enable_reverse_flow':
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini PLUMgridLibrary enable_reverse_flow_tap $reverse_flow_tap",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
+    }
+
+    # Configure new parameters for python-keystoneclient versions 1.7.0 and above
+    $user_domain_name = 'Default'
+    exec { 'keystone_authtoken user_domain_name config':
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini keystone_authtoken user_domain_name ${user_domain_name}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
+    }
+
+    # Configure new parameters for python-keystoneclient versions 1.7.0 and above
+    $project_domain_name = 'Default'
+    exec { 'keystone_authtoken project_domain_name config':
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini keystone_authtoken project_domain_name ${project_domain_name}",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
+    }
+
+    $check_internal_api_dev = hiera('internal_api_dev', 'undef')
+    if $check_internal_api_dev == 'undef' {
+      $mgmt_dev = dev_for_network(hiera('internal_api_network'))
+    } else {
+      $mgmt_dev = hiera('internal_api_dev', '%AUTO_DEV%')
+    }
+
+    $check_tenant_dev = hiera('tenant_dev', 'undef')
+    if $check_tenant_dev == 'undef' {
+      $fabric_dev = dev_for_network(hiera('tenant_network'))
+    } else {
+      $fabric_dev = hiera('tenant_dev', '%AUTO_DEV%')
+    }
+
+    # Install PLUMgrid Director
+    class{'plumgrid':
+      plumgrid_ip => $plumgrid_director_ips,
+      plumgrid_port => '8001',
+      rest_port => '9180',
+      mgmt_dev => $mgmt_dev,
+      fabric_dev => $fabric_dev,
+      repo_baseurl => "$plumgrid_repo_baseurl/yum",
+      repo_component => $plumgrid_repo_component,
+      lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
+      md_ip => hiera('plumgrid_md_ip'),
+      manage_repo => true,
+      source_net=> hiera('internal_api_network', 'undef'),
+      dest_net => hiera('internal_api_network', 'undef'),
+      before => Class['::neutron'],
+    }
+
+    class{'sal':
+      plumgrid_ip => $plumgrid_director_ips,
+      virtual_ip => hiera('neutron::plugins::plumgrid::director_server'),
+      rest_port => '9180',
+      mgmt_dev => hiera('internal_api_dev', '%AUTO_DEV%'),
+      md_ip => hiera('plumgrid_md_ip'),
+      source_net=> hiera('internal_api_network', 'undef'),
+      before => Class['::neutron'],
     }
   }
   if hiera('neutron::enable_dhcp_agent',true) {
@@ -864,10 +990,12 @@ MYSQL_HOST=localhost\n",
       enabled        => false,
     }
   }
-  include ::neutron::plugins::ml2
-  class { '::neutron::agents::ml2::ovs':
-    manage_service => false,
-    enabled        => false,
+  if hiera('neutron::core_plugin') == 'ml2' {
+    include ::neutron::plugins::ml2
+    class { '::neutron::agents::ml2::ovs':
+      manage_service => false,
+      enabled        => false,
+    }
   }
 
   if 'cisco_ucsm' in hiera('neutron::plugins::ml2::mechanism_drivers') {

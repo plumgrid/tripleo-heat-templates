@@ -157,14 +157,104 @@ elsif hiera('neutron::core_plugin') == 'networking_plumgrid.neutron.plugins.plug
   # this is required for the vms to pass through the gateways public interface
   sysctl::value { 'net.ipv4.ip_forward': value => '1' }
 
-  # ifc_ctl_pp needs to be invoked by root as part of the vif.py when a VM is powered on
-  file { '/etc/sudoers.d/ifc_ctl_sudoers':
-    ensure  => file,
-    owner   => root,
-    group   => root,
-    mode    => '0440',
-    content => "nova ALL=(root) NOPASSWD: /opt/pg/bin/ifc_ctl_pp *\n",
-  }
+   # ifc_ctl_pp needs to be invoked by root as part of the vif.py when a VM is powered on
+   # Enable Network filetrs required by PLUMgrid
+   file { '/etc/nova/rootwrap.d':
+     ensure  => directory,
+     owner   => root,
+     group   => root,
+   }
+
+   file { '/etc/nova/rootwrap.d/plumgrid.filter':
+     ensure  => file,
+     owner   => root,
+     group   => root,
+     mode    => '0644',
+     content => "# nova-rootwrap command filters for network nodes\n\n[Filters]\nifc_ctl: CommandFilter, /opt/pg/bin/ifc_ctl, root\nifc_ctl_pp: CommandFilter, /opt/pg/bin/ifc_ctl_pp, root\n",
+     require => File["/etc/nova/rootwrap.d"],
+   }
+
+   file { '/etc/libvirt/qemu.conf':
+     ensure  => file,
+     owner   => root,
+     group   => root,
+     mode    => '0440',
+     content => "cgroup_device_acl=[\"/dev/null\",\"/dev/full\",\"/dev/zero\",\"/dev/random\",\"/dev/urandom\",\"/dev/ptmx\",\"/dev/kvm\",\"/dev/kqemu\",\"/dev/rtc\",\"/dev/hpet\",\"/dev/net/tun\"]\nclear_emulator_capabilities=0\nuser=\"root\"\ngroup=\"root\"",
+     notify => Service['libvirt'],
+     before => Class['plumgrid'],
+   }
+
+   class { '::nova::api':
+     enabled  => false,
+     neutron_metadata_proxy_shared_secret  => hiera(neutron_metadata_proxy_shared_secret),
+     admin_password  => hiera(nova_password),
+     auth_uri  => hiera('ceilometer::agent::auth::auth_url'),
+     identity_uri  => hiera('nova::network::neutron::neutron_auth_url'),
+     sync_db  => false,
+     sync_db_api  => false,
+     before => Service['openstack-nova-metadata-api'],
+   }
+
+   service { 'openstack-nova-metadata-api':
+    ensure => running,
+    enable => true,
+    before => Class['plumgrid'],
+   }
+
+   $check_director_ips = hiera(plumgrid_director_mgmt_ips, 'undef')
+   if $check_director_ips == 'undef' {
+     $plumgrid_director_ips = hiera(controller_node_ips)
+   } else {
+     $plumgrid_director_ips = hiera(plumgrid_director_mgmt_ips)
+   }
+
+   # Disable NetworkManager
+   service { 'NetworkManager':
+     ensure => stopped,
+     enable => false,
+     before => Service['openstack-nova-metadata-api'],
+   }
+
+   $check_internal_api_dev = hiera('internal_api_dev', 'undef')
+   if $check_internal_api_dev == 'undef' {
+     $mgmt_dev = dev_for_network(hiera('internal_api_network'))
+   } else {
+     $mgmt_dev = hiera('internal_api_dev', '%AUTO_DEV%')
+   }
+
+   $check_tenant_dev = hiera('tenant_dev', 'undef')
+   if $check_tenant_dev == 'undef' {
+     $fabric_dev = dev_for_network(hiera('tenant_network'))
+   } else {
+     $fabric_dev = hiera('tenant_dev', '%AUTO_DEV%')
+   }
+
+   $plumgrid_repo_baseurl = hiera('plumgrid_repo_baseurl')
+   $plumgrid_repo_component = hiera('plumgrid_repo_component')
+
+   # Install PLUMgrid Edge
+    class{ 'plumgrid':
+      plumgrid_ip => $plumgrid_director_ips,
+      plumgrid_port => '8001',
+      rest_port => '9180',
+      mgmt_dev => $mgmt_dev,
+      fabric_dev => $fabric_dev,
+      repo_baseurl => "$plumgrid_repo_baseurl/yum",
+      lvm_keypath => '/var/lib/plumgrid/id_rsa.pub',
+      md_ip => hiera('plumgrid_md_ip'),
+      repo_component => $plumgrid_repo_component,
+      source_net=> hiera('internal_api_network', undef),
+      dest_net => hiera('internal_api_network', undef),
+      manage_repo => true,
+    }
+
+    class { firewall: }
+
+    firewall {'001 nova metdata incoming':
+      proto  => 'tcp',
+      dport  => ["8775"],
+      action => 'accept',
+    }
 }
 else {
 

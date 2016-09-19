@@ -19,7 +19,7 @@ function ping_controller_ips() {
       if [[ $in_network == "True" ]]; then
         echo -n "Trying to ping $REMOTE_IP for local network $LOCAL_NETWORK..."
         set +e
-        if ! $ping -W 300 -c 1 $REMOTE_IP &> /dev/null; then
+        if ! $ping -W 300 -c 5 $REMOTE_IP &> /dev/null; then
           echo "FAILURE"
           echo "$REMOTE_IP is not pingable. Local Network: $LOCAL_NETWORK" >&2
           exit 1
@@ -40,7 +40,7 @@ function ping_default_gateways() {
   set +e
   for GW in $DEFAULT_GW; do
     echo -n "Trying to ping default gateway ${GW}..."
-    if ! ping -c 1 $GW &> /dev/null; then
+    if ! ping -c 5 $GW &> /dev/null; then
       echo "FAILURE"
       echo "$GW is not pingable."
       exit 1

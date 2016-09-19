@@ -28,11 +28,43 @@ parameters:
   PLUMgridNovaMetadataIP:
     description: IP address of Nova Metadata
     type: string
-    default: 169.254.169.254
+    default: 169.254.1.254
   PLUMgridNovaMetadataPort:
     description: Port of Nova Metadata
     type: string
     default: 8775
+  PLUMgridNovaMetadataSubnet:
+    description: Subnet for PLUMgrid Metadata
+    type: string
+    default: 169.254.1.254/30
+  PLUMgridRepoURL:
+    description: URL for PLUMgrid Repository
+    type: string
+    default: http://127.0.0.1
+  PLUMgridRepoComponent:
+    description: Repository component for PLUMgrid Repository
+    type: string
+    default: icebox-600
+  InternalApiNetwork:
+    description: CIDR of Internal Api Network (Mapped to PLUMgrid mgmt)
+    type: string
+    default: 127.0.0.1/24
+  TenantNetwork:
+    description: CIDR of Tenant Network (Mapped to PLUMgrid fabric)
+    type: string
+    default: 127.0.0.1/24
+  InternalApiDevControl:
+    description: Device for PLUMgrid Management Network
+    type: string
+    default: ''
+  TenantDevControl:
+    description: Device for PLUMgrid Fabric Network
+    type: string
+    default: ''
+  OPSVMIP:
+    description: IP address for Middleware VM
+    type: string
+    default: '127.0.0.1'
   PLUMgridL2GatewayVendor:
     description: Vendor for L2 Gateway Switch
     type: string
@@ -44,6 +76,7 @@ parameters:
   PLUMgridL2GatewayPassword:
     description: Password for L2 Gateway Switch
     type: string
+    default: password
     hidden: true
   PLUMgridIdentityVersion:
     description: Keystone Identity version
@@ -61,6 +94,14 @@ parameters:
     description: PLUMgrid Plumlib version
     type: string
     default: present
+  PLUMgridReverseFlowTap:
+    description: PLUMgrid Plumlib enable reverse flow tap
+    type: string
+    default: True
+  PLUMgridNovaMetaConfig:
+    description: PLUMgrid Plumlib nova metaconfig
+    type: string
+    default: True
 
 
 resources:
@@ -86,6 +127,17 @@ resources:
                 neutron::plugins::plumgrid::identity_version: {get_input: plumgrid_identity_version}
                 neutron::plugins::plumgrid::package_ensure: {get_input: plumgrid_neutron_plugin_version}
                 neutron::plugins::plumgrid::plumlib_package_ensure: {get_input: plumgrid_plumlib_version}
+                internal_api_dev: {get_input: internal_api_dev}
+                tenant_dev: {get_input: tenant_dev}
+                plumgrid_repo_baseurl: {get_input: plumgrid_repo_url}
+                plumgrid_repo_component: {get_input: plumgrid_repo_component}
+                plumgrid_virtual_ip: {get_input: plumgrid_director_server}
+                internal_api_network: {get_input: internal_api_network}
+                tenant_network: {get_input: tenant_network}
+                plumgrid_nova_metadata_subnet: {get_input: plumgrid_nova_metadata_subnet}
+                plumgrid_nova_metaconfig: {get_input: plumgrid_nova_metaconfig}
+                plumgrid_reverse_flow_tap: {get_input: plumgrid_reverse_flow_tap}
+                plumgrid_md_ip: {get_input: plumgrid_md_ip}
 
   ControllerPLUMgridDeployment:
     type: OS::Heat::StructuredDeployment
@@ -106,6 +158,16 @@ resources:
         plumgrid_connector_type: {get_param: PLUMgridConnectorType}
         plumgrid_neutron_plugin_version: {get_param: PLUMgridNeutronPluginVersion}
         plumgrid_plumlib_version: {get_param: PLUMgridPlumlibVersion}
+        plumgrid_repo_url: {get_param: PLUMgridRepoURL}
+        plumgrid_repo_component: {get_param: PLUMgridRepoComponent}
+        internal_api_network: {get_param: InternalApiNetwork}
+        tenant_network: {get_param: TenantNetwork}
+        internal_api_dev: {get_param: InternalApiDevControl}
+        tenant_dev: {get_param: TenantDevControl}
+        plumgrid_nova_metadata_subnet: {get_param: PLUMgridNovaMetadataSubnet}
+        plumgrid_nova_metaconfig: {get_param: PLUMgridNovaMetaConfig}
+        plumgrid_reverse_flow_tap: {get_param: PLUMgridReverseFlowTap}
+        plumgrid_md_ip: {get_param: OPSVMIP}
 
 outputs:
   deploy_stdout:

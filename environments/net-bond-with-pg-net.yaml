@@ -1,0 +1,61 @@
+# This template configures each computes/controller to use a pair of bonded nics (nic2 and
+# nic3) and configures an IP address on each relevant isolated network with PLUMgrid
+# Management and Fabric networks
+
+resource_registry:
+  OS::TripleO::Compute::Net::SoftwareConfig: ../network/config/bond-with-pg-net/compute.yaml
+  OS::TripleO::Controller::Net::SoftwareConfig: ../network/config/bond-with-pg-net/controller.yaml
+  OS::TripleO::Network::InternalApi: ../network/internal_api.yaml
+  OS::TripleO::Network::StorageMgmt: ../network/storage_mgmt.yaml
+  OS::TripleO::Network::Storage: ../network/storage.yaml
+  OS::TripleO::Network::Tenant: ../network/tenant.yaml
+  OS::TripleO::Network::External: ../network/external.yaml
+
+  # Port assignments for the VIPs
+  OS::TripleO::Network::Ports::CtlplaneVipPort: ../network/ports/ctlplane_vip.yaml
+  OS::TripleO::Network::Ports::InternalApiVipPort: ../network/ports/internal_api.yaml
+  OS::TripleO::Network::Ports::StorageVipPort: ../network/ports/storage.yaml
+  OS::TripleO::Network::Ports::StorageMgmtVipPort: ../network/ports/storage_mgmt.yaml
+  OS::TripleO::Network::Ports::TenantVipPort: ../network/ports/tenant.yaml
+  OS::TripleO::Network::Ports::ExternalVipPort: ../network/ports/external.yaml
+
+  # Port assignments for the controller role
+  OS::TripleO::Controller::Ports::InternalApiPort: ../network/ports/internal_api.yaml
+  OS::TripleO::Controller::Ports::StoragePort: ../network/ports/storage.yaml
+  OS::TripleO::Controller::Ports::StorageMgmtPort: ../network/ports/storage_mgmt.yaml
+  OS::TripleO::Controller::Ports::TenantPort: ../network/ports/tenant.yaml
+  OS::TripleO::Controller::Ports::ExternalPort: ../network/ports/external.yaml
+
+  # Port assignments for the compute role
+  OS::TripleO::Compute::Ports::InternalApiPort: ../network/ports/internal_api.yaml
+  OS::TripleO::Compute::Ports::StoragePort: ../network/ports/storage.yaml
+  OS::TripleO::Compute::Ports::TenantPort: ../network/ports/tenant.yaml
+
+parameter_defaults:
+  # Customize all these values to match the local environment
+  TenantNetCidr: 192.168.100.0/24
+  InternalApiNetCidr: 192.168.101.0/24
+  StorageNetCidr: 192.168.102.0/24
+  StorageMgmtNetCidr: 192.168.103.0/24
+  ExternalNetCidr: 192.168.104.0/24
+  # CIDR subnet mask length for provisioning network
+  ControlPlaneSubnetCidr: '24'
+  # IP allocation pools for overcloud networks
+  TenantAllocationPools: [{'start': '192.168.100.50', 'end': '192.168.100.200'}]
+  InternalApiAllocationPools: [{'start': '192.168.101.50', 'end': '192.168.101.200'}]
+  StorageAllocationPools: [{'start': '192.168.102.50', 'end': '192.168.102.200'}]
+  StorageMgmtAllocationPools: [{'start': '192.168.103.50', 'end': '192.168.103.200'}]
+  ExternalAllocationPools: [{'start': '192.168.104.50', 'end': '192.168.104.200'}]
+  # Gateway router for the provisioning network (or Undercloud IP)
+  ControlPlaneDefaultRoute: 192.168.99.10
+  # Generally the IP of the Undercloud
+  EC2MetadataIp: 192.168.99.10
+  # Set to the router gateway on the external network
+  ExternalInterfaceDefaultRoute: 192.168.104.1
+  # Define the DNS servers (maximum 2) for the overcloud nodes
+  DnsServers: ["8.8.8.8","8.8.4.4"]
+  # VLAN ids for the overcloud networks
+  InternalApiNetworkVlanID: 101
+  StorageNetworkVlanID: 102
+  StorageMgmtNetworkVlanID: 103
+  ExternalNetworkVlanID: 104

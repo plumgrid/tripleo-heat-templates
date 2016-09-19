@@ -1,0 +1,73 @@
+heat_template_version: 2015-04-30
+
+description: Compute hieradata for Neutron PLUMgrid configuration
+
+parameters:
+  server:
+    description: ID of the controller node to apply this config to
+    type: string
+  PLUMgridRepoURL:
+    description: URL for PLUMgrid Repository
+    type: string
+    default: http://127.0.0.1
+  PLUMgridRepoComponent:
+    description: Repository component for PLUMgrid Repository
+    type: string
+    default: icebox-600
+  InternalApiNetwork:
+    description: CIDR of Internal Api Network (Mapped to PLUMgrid mgmt)
+    type: string
+    default: 127.0.0.1/24
+  TenantNetwork:
+    description: CIDR of Tenant Network (Mapped to PLUMgrid fabric)
+    type: string
+    default: 127.0.0.1/24
+  InternalApiDevCompute:
+    description: Device for Internal Api Network
+    type: string
+    default: ''
+  TenantDevCompute:
+    description: Device for Tenant Network
+    type: string
+    default: ''
+  OPSVMIP:
+    description: IP address for OPS VM
+    type: string
+    default: '127.0.0.1'
+
+resources:
+  ComputePLUMgridConfig:
+    type: OS::Heat::StructuredConfig
+    properties:
+      group: os-apply-config
+      config:
+        hiera:
+          datafiles:
+            neutron_plumgrid_data:
+              mapped_data:
+                internal_api_dev: {get_input: internal_api_dev}
+                tenant_dev: {get_input: tenant_dev}
+                plumgrid_repo_baseurl: {get_input: plumgrid_repo_url}
+                plumgrid_repo_component: {get_input: plumgrid_repo_component}
+                internal_api_network: {get_input: internal_api_network}
+                tenant_network: {get_input: tenant_network}
+                plumgrid_md_ip: {get_input: plumgrid_md_ip}
+
+  ComputePLUMgridDeployment:
+    type: OS::Heat::StructuredDeployment
+    properties:
+      config: {get_resource: ComputePLUMgridConfig}
+      server: {get_param: server}
+      input_values:
+        plumgrid_repo_url: {get_param: PLUMgridRepoURL}
+        plumgrid_repo_component: {get_param: PLUMgridRepoComponent}
+        internal_api_network: {get_param: InternalApiNetwork}
+        tenant_network: {get_param: TenantNetwork}
+        internal_api_dev: {get_param: InternalApiDevCompute}
+        tenant_dev: {get_param: TenantDevCompute}
+        plumgrid_md_ip: {get_param: OPSVMIP}
+
+outputs:
+  deploy_stdout:
+    description: Output of the extra hiera data deployment
+    value: {get_attr: [ComputePLUMgridDeployment, deploy_stdout]}

@@ -102,6 +102,10 @@ parameters:
     description: PLUMgrid Plumlib nova metaconfig
     type: string
     default: True
+  PLUMgridNovaEndPointType:
+    description: PLUMgrid Plumlib nova endpoint_type
+    type: string
+    default: public
 
 
 resources:
@@ -137,6 +141,7 @@ resources:
                 plumgrid_nova_metadata_subnet: {get_input: plumgrid_nova_metadata_subnet}
                 plumgrid_nova_metaconfig: {get_input: plumgrid_nova_metaconfig}
                 plumgrid_reverse_flow_tap: {get_input: plumgrid_reverse_flow_tap}
+                plumgrid_nova_endpoint_type: {get_input: plumgrid_nova_endpoint_type}
                 plumgrid_md_ip: {get_input: plumgrid_md_ip}
 
   ControllerPLUMgridDeployment:
@@ -167,6 +172,7 @@ resources:
         plumgrid_nova_metadata_subnet: {get_param: PLUMgridNovaMetadataSubnet}
         plumgrid_nova_metaconfig: {get_param: PLUMgridNovaMetaConfig}
         plumgrid_reverse_flow_tap: {get_param: PLUMgridReverseFlowTap}
+        plumgrid_nova_endpoint_type: {get_param: PLUMgridNovaEndPointType}
         plumgrid_md_ip: {get_param: OPSVMIP}
 
 outputs:

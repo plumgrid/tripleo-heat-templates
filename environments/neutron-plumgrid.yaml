@@ -52,6 +52,7 @@ parameter_defaults:
   PLUMgridPlumlibVersion: present
   PLUMgridNovaMetaConfig: True
   PLUMgridReverseFlowTap: True
+  PLUMgridNovaEndPointType: public
 
   # PLUMgrid Management(Internal Api) and PLUMgrid Fabric(Tenant) network interfaces
   # If not provided, interfaces will be auto detected based on InternalApiNetwork and TenantNetwork

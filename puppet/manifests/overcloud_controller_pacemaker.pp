@@ -924,6 +924,14 @@ MYSQL_HOST=localhost\n",
       require => Class['::neutron::plugins::plumgrid'],
     }
 
+    # Configure new parameters for pglib
+    $pg_nova_endpoint_type = hiera(plumgrid_nova_endpoint_type)
+    exec { 'pg_lib nova_endpoint_type':
+      command => "openstack-config --set /etc/neutron/plugins/plumgrid/plumlib.ini Nova endpoint_type $pg_nova_endpoint_type",
+      path    => [ '/usr/local/bin/', '/bin/' ],
+      require => Class['::neutron::plugins::plumgrid'],
+    }
+
     $check_internal_api_dev = hiera('internal_api_dev', 'undef')
     if $check_internal_api_dev == 'undef' {
       $mgmt_dev = dev_for_network(hiera('internal_api_network'))

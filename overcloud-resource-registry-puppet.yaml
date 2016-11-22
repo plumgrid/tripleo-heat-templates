@@ -18,10 +18,17 @@ resource_registry:
   OS::TripleO::BlockStoragePostDeployment: puppet/cinder-storage-post.yaml
   OS::TripleO::CephStoragePostDeployment: puppet/ceph-storage-post.yaml
   OS::TripleO::SwiftDevicesAndProxy::SoftwareConfig: puppet/swift-devices-and-proxy-config.yaml
-  OS::TripleO::CephClusterConfig::SoftwareConfig: puppet/ceph-cluster-config.yaml
   OS::TripleO::AllNodes::SoftwareConfig: puppet/all-nodes-config.yaml
-  OS::TripleO::BootstrapNode::SoftwareConfig: puppet/bootstrap-config.yaml
+  OS::TripleO::DefaultPasswords: default_passwords.yaml
+
+  # Tasks (for internal TripleO usage)
+  OS::TripleO::Tasks::UpdateWorkflow: OS::Heat::None
   OS::TripleO::Tasks::PackageUpdate: extraconfig/tasks/yum_update.yaml
+  OS::TripleO::Tasks::ControllerPrePuppet: OS::Heat::None
+  OS::TripleO::Tasks::ControllerPostPuppet: OS::Heat::None
+
+
+  OS::TripleO::Server: OS::Nova::Server
 
   # This creates the "heat-admin" user for all OS images by default
   # To disable, replace with firstboot/userdata_default.yaml
@@ -33,6 +40,8 @@ resource_registry:
   # NodeExtraConfig == All nodes configuration pre service deployment
   # NodeExtraConfigPost == All nodes configuration post service deployment
   OS::TripleO::NodeUserData: firstboot/userdata_default.yaml
+  OS::TripleO::NodeTLSCAData: OS::Heat::None
+  OS::TripleO::NodeTLSData: OS::Heat::None
   OS::TripleO::ControllerExtraConfigPre: puppet/extraconfig/pre_deploy/default.yaml
   OS::TripleO::ComputeExtraConfigPre: puppet/extraconfig/pre_deploy/default.yaml
   OS::TripleO::CephStorageExtraConfigPre: puppet/extraconfig/pre_deploy/default.yaml
@@ -43,22 +52,31 @@ resource_registry:
   # phase, e.g when puppet is applied, but after the pre_deploy phase.  Useful when
   # configuration with knowledge of all nodes in the cluster is required vs single
   # node configuration in the pre_deploy step.
-  OS::TripleO::AllNodesExtraConfig: extraconfig/all_nodes/default.yaml
+  # See extraconfig/all_nodes/* for examples
+  OS::TripleO::AllNodesExtraConfig: OS::Heat::None
 
   # TripleO overcloud networks
   OS::TripleO::Network: network/networks.yaml
-  OS::TripleO::VipConfig: puppet/vip-config.yaml
 
+  OS::TripleO::Network::External: OS::Heat::None
+  OS::TripleO::Network::InternalApi: OS::Heat::None
+  OS::TripleO::Network::StorageMgmt: OS::Heat::None
+  OS::TripleO::Network::Storage: OS::Heat::None
+  OS::TripleO::Network::Tenant: OS::Heat::None
+  OS::TripleO::Network::Management: OS::Heat::None
 
-  OS::TripleO::Network::External: network/noop.yaml
-  OS::TripleO::Network::InternalApi: network/noop.yaml
-  OS::TripleO::Network::StorageMgmt: network/noop.yaml
-  OS::TripleO::Network::Storage: network/noop.yaml
-  OS::TripleO::Network::Tenant: network/noop.yaml
+  OS::TripleO::Network::ExtraConfig: OS::Heat::None
 
+  OS::TripleO::Network::Ports::NetVipMap: network/ports/net_ip_map.yaml
   OS::TripleO::Network::Ports::NetIpMap: network/ports/net_ip_map.yaml
-  OS::TripleO::Network::Ports::NetIpSubnetMap: network/ports/net_ip_subnet_map.yaml
   OS::TripleO::Network::Ports::NetIpListMap: network/ports/net_ip_list_map.yaml
+
+  # Port assignments for the VIPs
+  OS::TripleO::Network::Ports::ExternalVipPort: network/ports/noop.yaml
+  OS::TripleO::Network::Ports::InternalApiVipPort: network/ports/noop.yaml
+  OS::TripleO::Network::Ports::StorageVipPort: network/ports/noop.yaml
+  OS::TripleO::Network::Ports::StorageMgmtVipPort: network/ports/noop.yaml
+  OS::TripleO::Network::Ports::RedisVipPort: network/ports/ctlplane_vip.yaml
 
   # Port assignments for the controller role
   OS::TripleO::Controller::Ports::ExternalPort: network/ports/noop.yaml
@@ -66,31 +84,171 @@ resource_registry:
   OS::TripleO::Controller::Ports::StoragePort: network/ports/noop.yaml
   OS::TripleO::Controller::Ports::StorageMgmtPort: network/ports/noop.yaml
   OS::TripleO::Controller::Ports::TenantPort: network/ports/noop.yaml
+  OS::TripleO::Controller::Ports::ManagementPort: network/ports/noop.yaml
 
   # Port assignments for the compute role
+  OS::TripleO::Compute::Ports::ExternalPort: network/ports/noop.yaml
   OS::TripleO::Compute::Ports::InternalApiPort: network/ports/noop.yaml
   OS::TripleO::Compute::Ports::StoragePort: network/ports/noop.yaml
+  OS::TripleO::Compute::Ports::StorageMgmtPort: network/ports/noop.yaml
   OS::TripleO::Compute::Ports::TenantPort: network/ports/noop.yaml
+  OS::TripleO::Compute::Ports::ManagementPort: network/ports/noop.yaml
 
   # Port assignments for the ceph storage role
+  OS::TripleO::CephStorage::Ports::ExternalPort: network/ports/noop.yaml
+  OS::TripleO::CephStorage::Ports::InternalApiPort: network/ports/noop.yaml
   OS::TripleO::CephStorage::Ports::StoragePort: network/ports/noop.yaml
   OS::TripleO::CephStorage::Ports::StorageMgmtPort: network/ports/noop.yaml
+  OS::TripleO::CephStorage::Ports::TenantPort: network/ports/noop.yaml
+  OS::TripleO::CephStorage::Ports::ManagementPort: network/ports/noop.yaml
 
   # Port assignments for the swift storage role
+  OS::TripleO::SwiftStorage::Ports::ExternalPort: network/ports/noop.yaml
   OS::TripleO::SwiftStorage::Ports::InternalApiPort: network/ports/noop.yaml
   OS::TripleO::SwiftStorage::Ports::StoragePort: network/ports/noop.yaml
   OS::TripleO::SwiftStorage::Ports::StorageMgmtPort: network/ports/noop.yaml
+  OS::TripleO::SwiftStorage::Ports::TenantPort: network/ports/noop.yaml
+  OS::TripleO::SwiftStorage::Ports::ManagementPort: network/ports/noop.yaml
 
   # Port assignments for the block storage role
+  OS::TripleO::BlockStorage::Ports::ExternalPort: network/ports/noop.yaml
   OS::TripleO::BlockStorage::Ports::InternalApiPort: network/ports/noop.yaml
   OS::TripleO::BlockStorage::Ports::StoragePort: network/ports/noop.yaml
   OS::TripleO::BlockStorage::Ports::StorageMgmtPort: network/ports/noop.yaml
+  OS::TripleO::BlockStorage::Ports::TenantPort: network/ports/noop.yaml
+  OS::TripleO::BlockStorage::Ports::ManagementPort: network/ports/noop.yaml
 
-  # Port assignments for service virtual IPs for the controller role
-  OS::TripleO::Controller::Ports::RedisVipPort: network/ports/ctlplane_vip.yaml
+  # Service to network Mappings
+  OS::TripleO::ServiceNetMap: network/service_net_map.yaml
+
+  # Service Endpoint Mappings
+  OS::TripleO::EndpointMap: network/endpoints/endpoint_map.yaml
 
   # validation resources
   OS::TripleO::AllNodes::Validation: all-nodes-validation.yaml
 
+  # services
+  OS::TripleO::Services: puppet/services/services.yaml
+  OS::TripleO::Services::Apache: puppet/services/apache.yaml
+  OS::TripleO::Services::CACerts: puppet/services/ca-certs.yaml
+  OS::TripleO::Services::CephMon: OS::Heat::None
+  OS::TripleO::Services::CephOSD: OS::Heat::None
+  OS::TripleO::Services::CephClient: OS::Heat::None
+  OS::TripleO::Services::CephExternal: OS::Heat::None
+  OS::TripleO::Services::CinderApi: puppet/services/cinder-api.yaml
+  OS::TripleO::Services::CinderBackup: OS::Heat::None
+  OS::TripleO::Services::CinderScheduler: puppet/services/cinder-scheduler.yaml
+  OS::TripleO::Services::CinderVolume: puppet/services/cinder-volume.yaml
+  OS::TripleO::Services::Core: OS::Heat::None
+  OS::TripleO::Services::Keystone: puppet/services/keystone.yaml
+  OS::TripleO::Services::GlanceApi: puppet/services/glance-api.yaml
+  OS::TripleO::Services::GlanceRegistry: puppet/services/glance-registry.yaml
+  OS::TripleO::Services::HeatApi: puppet/services/heat-api.yaml
+  OS::TripleO::Services::HeatApiCfn: puppet/services/heat-api-cfn.yaml
+  OS::TripleO::Services::HeatApiCloudwatch: puppet/services/heat-api-cloudwatch.yaml
+  OS::TripleO::Services::HeatEngine: puppet/services/heat-engine.yaml
+  OS::TripleO::Services::Kernel: puppet/services/kernel.yaml
+  OS::TripleO::Services::MySQL: puppet/services/database/mysql.yaml
+  OS::TripleO::Services::NeutronDhcpAgent: puppet/services/neutron-dhcp.yaml
+  OS::TripleO::Services::NeutronL3Agent: puppet/services/neutron-l3.yaml
+  OS::TripleO::Services::NeutronMetadataAgent: puppet/services/neutron-metadata.yaml
+  # FIXME(shardy) the duplicate NeutronServer line can be removed when we've updated
+  # the multinode job ControllerServices after this patch merges
+  OS::TripleO::Services::NeutronServer: puppet/services/neutron-api.yaml
+  OS::TripleO::Services::NeutronApi: puppet/services/neutron-api.yaml
+  OS::TripleO::Services::NeutronCorePlugin: puppet/services/neutron-plugin-ml2.yaml
+  # can be the same as NeutronCorePlugin but some vendors install different
+  # things where VMs run
+  OS::TripleO::Services::ComputeNeutronCorePlugin: puppet/services/neutron-plugin-ml2.yaml
+  # Neutron Core Plugin Vendors (these typically override NeutronCorePlugin)
+  OS::TripleO::Services::NeutronCorePluginML2OVN: puppet/services/neutron-plugin-ml2-ovn.yaml
+  OS::TripleO::Services::NeutronCorePluginPlumgrid: puppet/services/neutron-plugin-plumgrid.yaml
+  OS::TripleO::Services::NeutronCorePluginNuage: puppet/services/neutron-plugin-nuage.yaml
+  OS::TripleO::Services::NeutronCorePluginOpencontrail: puppet/services/neutron-plugin-opencontrail.yaml
+  OS::TripleO::Services::NeutronCorePluginMidonet: puppet/services/neutron-midonet.yaml
+  OS::TripleO::Services::NeutronOvsAgent: puppet/services/neutron-ovs-agent.yaml
+  OS::TripleO::Services::ComputeNeutronOvsAgent: puppet/services/neutron-ovs-agent.yaml
+  OS::TripleO::Services::Pacemaker: OS::Heat::None
+  OS::TripleO::Services::NeutronSriovAgent: OS::Heat::None
+  OS::TripleO::Services::RabbitMQ: puppet/services/rabbitmq.yaml
+  OS::TripleO::Services::HAproxy: puppet/services/haproxy.yaml
+  OS::TripleO::Services::Keepalived: puppet/services/keepalived.yaml
+  OS::TripleO::Services::Memcached: puppet/services/memcached.yaml
+  OS::TripleO::Services::SaharaApi: OS::Heat::None
+  OS::TripleO::Services::SaharaEngine: OS::Heat::None
+  OS::TripleO::Services::Redis: puppet/services/database/redis.yaml
+  OS::TripleO::Services::NovaConductor: puppet/services/nova-conductor.yaml
+  OS::TripleO::Services::MongoDb: puppet/services/database/mongodb.yaml
+  OS::TripleO::Services::NovaApi: puppet/services/nova-api.yaml
+  OS::TripleO::Services::NovaScheduler: puppet/services/nova-scheduler.yaml
+  OS::TripleO::Services::NovaConsoleauth: puppet/services/nova-consoleauth.yaml
+  OS::TripleO::Services::NovaVncproxy: puppet/services/nova-vncproxy.yaml
+  OS::TripleO::Services::NovaCompute: puppet/services/nova-compute.yaml
+  OS::TripleO::Services::NovaLibvirt: puppet/services/nova-libvirt.yaml
+  OS::TripleO::Services::Ntp: puppet/services/time/ntp.yaml
+  OS::TripleO::Services::SwiftProxy: puppet/services/swift-proxy.yaml
+  OS::TripleO::Services::SwiftStorage: puppet/services/swift-storage.yaml
+  OS::TripleO::Services::SwiftRingBuilder: puppet/services/swift-ringbuilder.yaml
+  OS::TripleO::Services::Snmp: puppet/services/snmp.yaml
+  OS::TripleO::Services::Timezone: puppet/services/time/timezone.yaml
+  OS::TripleO::Services::CeilometerApi: puppet/services/ceilometer-api.yaml
+  OS::TripleO::Services::CeilometerCollector: puppet/services/ceilometer-collector.yaml
+  OS::TripleO::Services::CeilometerExpirer: puppet/services/ceilometer-expirer.yaml
+  OS::TripleO::Services::CeilometerAgentCentral: puppet/services/ceilometer-agent-central.yaml
+  OS::TripleO::Services::CeilometerAgentNotification: puppet/services/ceilometer-agent-notification.yaml
+  OS::TripleO::Services::ComputeCeilometerAgent: puppet/services/ceilometer-agent-compute.yaml
+  OS::TripleO::Services::Horizon: puppet/services/horizon.yaml
+  #Gnocchi services
+  OS::TripleO::Services::GnocchiApi: puppet/services/gnocchi-api.yaml
+  OS::TripleO::Services::GnocchiMetricd: puppet/services/gnocchi-metricd.yaml
+  OS::TripleO::Services::GnocchiStatsd: puppet/services/gnocchi-statsd.yaml
+  # Services that are disabled by default (use relevant environment files):
+  OS::Tripleo::Services::ManilaApi: OS::Heat::None
+  OS::Tripleo::Services::ManilaScheduler: OS::Heat::None
+  OS::Tripleo::Services::ManilaShare: OS::Heat::None
+  OS::TripleO::Services::ComputeNeutronL3Agent: OS::Heat::None
+  OS::TripleO::Services::ComputeNeutronMetadataAgent: OS::Heat::None
+  OS::TripleO::Services::AodhApi: puppet/services/aodh-api.yaml
+  OS::TripleO::Services::AodhEvaluator: puppet/services/aodh-evaluator.yaml
+  OS::TripleO::Services::AodhNotifier: puppet/services/aodh-notifier.yaml
+  OS::TripleO::Services::AodhListener: puppet/services/aodh-listener.yaml
+  OS::TripleO::Services::MistralEngine: OS::Heat::None
+  OS::TripleO::Services::MistralApi: OS::Heat::None
+  OS::TripleO::Services::MistralExecutor: OS::Heat::None
+  OS::TripleO::Services::IronicApi: OS::Heat::None
+  OS::TripleO::Services::IronicConductor: OS::Heat::None
+  OS::TripleO::Services::NovaIronic: OS::Heat::None
+  OS::TripleO::Services::TripleoPackages: puppet/services/tripleo-packages.yaml
+  OS::TripleO::Services::TripleoFirewall: puppet/services/tripleo-firewall.yaml
+  OS::TripleO::Services::OpenDaylight: OS::Heat::None
+  OS::TripleO::Services::OpenDaylightOvs: OS::Heat::None
+  OS::TripleO::Services::SensuClient: OS::Heat::None
+
+  # Custom pacemaker services
+  # We have here all the content from the puppet-pacemaker.yaml template
+  # as by default we only support pacemaker deployments even with only
+  # one node. This will be smaller when new HA lands.
+  # NOTE: Please before adding any pacemaker-managed services, get in touch
+  # with bandini, Ng or beekhof
+  # PREVIOUS PARAMETERS REMAINS AS THEY WILL BE OVERRIDDEN BY THESE:
+  # Begin file
+  OS::TripleO::ControllerConfig: puppet/controller-config-pacemaker.yaml
+  OS::TripleO::Tasks::ControllerPrePuppet: extraconfig/tasks/pre_puppet_pacemaker.yaml
+  OS::TripleO::Tasks::ControllerPostPuppet: extraconfig/tasks/post_puppet_pacemaker.yaml
+  OS::TripleO::Tasks::ControllerPostPuppetRestart: extraconfig/tasks/post_puppet_pacemaker_restart.yaml
+
+  # custom pacemaker services
+  # NOTE: For now we will need to specify overrides to all services
+  # which use pacemaker. In the future (with upcoming HA light work) this
+  # list will hopefully be much smaller however.
+  OS::TripleO::Services::CinderVolume: puppet/services/pacemaker/cinder-volume.yaml
+  OS::TripleO::Services::RabbitMQ: puppet/services/pacemaker/rabbitmq.yaml
+  OS::TripleO::Services::HAproxy: puppet/services/pacemaker/haproxy.yaml
+  OS::TripleO::Services::Pacemaker: puppet/services/pacemaker.yaml
+  OS::TripleO::Services::Redis: puppet/services/pacemaker/database/redis.yaml
+  OS::TripleO::Services::MySQL: puppet/services/pacemaker/database/mysql.yaml
+  # End file
+
 parameter_defaults:
   EnablePackageInstall: false
+  SoftwareConfigTransport: POLL_TEMP_URL

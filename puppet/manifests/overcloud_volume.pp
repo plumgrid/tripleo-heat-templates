@@ -13,44 +13,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-include tripleo::packages
-
-create_resources(sysctl::value, hiera('sysctl_settings'), {})
-
-if count(hiera('ntp::servers')) > 0 {
-  include ::ntp
+if hiera('step') >= 4 {
+  hiera_include('volume_classes', [])
 }
 
-include ::cinder
-include ::cinder::config
-include ::cinder::glance
-include ::cinder::volume
-include ::cinder::setup_test_volume
-
-$cinder_enable_iscsi = hiera('cinder_enable_iscsi_backend', true)
-if $cinder_enable_iscsi {
-  $cinder_iscsi_backend = 'tripleo_iscsi'
-
-  cinder::backend::iscsi { $cinder_iscsi_backend :
-    iscsi_ip_address => hiera('cinder_iscsi_ip_address'),
-    iscsi_helper     => hiera('cinder_iscsi_helper'),
-  }
-}
-
-$cinder_enabled_backends = any2array($cinder_iscsi_backend)
-class { '::cinder::backends' :
-  enabled_backends => $cinder_enabled_backends,
-}
-
-$snmpd_user = hiera('snmpd_readonly_user_name')
-snmp::snmpv3_user { $snmpd_user:
-  authtype => 'MD5',
-  authpass => hiera('snmpd_readonly_user_password'),
-}
-class { 'snmp':
-  agentaddress => ['udp:161','udp6:[::1]:161'],
-  snmpd_config => [ join(['rouser ', hiera('snmpd_readonly_user_name')]), 'proc  cron', 'includeAllDisks  10%', 'master agentx', 'trapsink localhost public', 'iquerySecName internalUser', 'rouser internalUser', 'defaultMonitors yes', 'linkUpDownNotifications yes' ],
-}
-
-hiera_include('volume_classes')
-package_manifest{'/var/lib/tripleo/installed-packages/overcloud_volume': ensure => present}
+$package_manifest_name = join(['/var/lib/tripleo/installed-packages/overcloud_volume', hiera('step')])
+package_manifest{$package_manifest_name: ensure => present}

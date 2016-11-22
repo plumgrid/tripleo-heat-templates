@@ -1,56 +1,21 @@
-heat_template_version: 2015-04-30
+heat_template_version: 2016-10-14
 description: 'OpenStack swift storage node configured by Puppet'
 parameters:
-  Flavor:
+  OvercloudSwiftStorageFlavor:
     description: Flavor for Swift storage nodes to request when deploying.
+    default: baremetal
     type: string
     constraints:
       - custom_constraint: nova.flavor
-  HashSuffix:
-    default: unset
-    description: A random string to be used as a salt when hashing to determine mappings
-      in the ring.
-    hidden: true
+  SwiftStorageImage:
+    default: overcloud-full
     type: string
-  Image:
-    default: overcloud-swift-storage
-    type: string
+    constraints:
+      - custom_constraint: glance.image
   KeyName:
     default: default
-    description: Name of an existing EC2 KeyPair to enable SSH access to the instances
+    description: Name of an existing Nova key pair to enable SSH access to the instances
     type: string
-  MountCheck:
-    default: 'false'
-    description: Value of mount_check in Swift account/container/object -server.conf
-    type: boolean
-  MinPartHours:
-    type: number
-    default: 1
-    description: The minimum time (in hours) before a partition in a ring can be moved following a rebalance.
-  PartPower:
-    default: 10
-    description: Partition Power to use when building Swift rings
-    type: number
-  Replicas:
-    type: number
-    default: 3
-    description: How many replicas to use in the swift rings.
-  SnmpdReadonlyUserName:
-    default: ro_snmp_user
-    description: The user name for SNMPd with readonly rights running on all Overcloud nodes
-    type: string
-  SnmpdReadonlyUserPassword:
-    default: unset
-    description: The user password for SNMPd with readonly rights running on all Overcloud nodes
-    type: string
-    hidden: true
-  NtpServer:
-    type: string
-    default: ''
-  EnablePackageInstall:
-    default: 'false'
-    description: Set to true to enable package installation via Puppet
-    type: boolean
   UpdateIdentifier:
     default: ''
     type: string
@@ -65,6 +30,10 @@ parameters:
   Hostname:
     type: string
     default: '' # Defaults to Heat created hostname
+  HostnameMap:
+    type: json
+    default: {}
+    description: Optional mapping to override hostnames
   ExtraConfig:
     default: {}
     description: |
@@ -76,21 +45,79 @@ parameters:
     description: |
       Role specific additional hiera configuration to inject into the cluster.
     type: json
-
+  SwiftStorageIPs:
+    default: {}
+    type: json
+  NetworkDeploymentActions:
+    type: comma_delimited_list
+    description: >
+      Heat action when to apply network configuration changes
+    default: ['CREATE']
+  SoftwareConfigTransport:
+    default: POLL_SERVER_CFN
+    description: |
+      How the server should receive the metadata required for software configuration.
+    type: string
+    constraints:
+    - allowed_values: [POLL_SERVER_CFN, POLL_SERVER_HEAT, POLL_TEMP_URL, ZAQAR_MESSAGE]
+  CloudDomain:
+    type: string
+    description: >
+      The DNS domain used for the hosts. This should match the dhcp_domain
+      configured in the Undercloud neutron. Defaults to localdomain.
+  ServerMetadata:
+    default: {}
+    description: >
+      Extra properties or metadata passed to Nova for the created nodes in
+      the overcloud. It's accessible via the Nova metadata API.
+    type: json
+  ObjectStorageSchedulerHints:
+    type: json
+    description: Optional scheduler hints to pass to nova
+    default: {}
+  NodeIndex:
+    type: number
+    default: 0
+  ServiceConfigSettings:
+    type: json
+    default: {}
+  ServiceNames:
+    type: comma_delimited_list
+    default: []
+  MonitoringSubscriptions:
+    type: comma_delimited_list
+    default: []
+  ConfigCommand:
+    type: string
+    description: Command which will be run whenever configuration data changes
+    default: os-refresh-config --timeout 14400
+  SwiftRawDisks:
+    default: {}
+    description: 'A hash of additional raw devices to use as Swift backend (eg. {sdb: {}})'
+    type: json
 
 resources:
 
   SwiftStorage:
     type: OS::Nova::Server
+    metadata:
+      os-collect-config:
+        command: {get_param: ConfigCommand}
     properties:
-      image: {get_param: Image}
-      flavor: {get_param: Flavor}
+      image: {get_param: SwiftStorageImage}
+      flavor: {get_param: OvercloudSwiftStorageFlavor}
       key_name: {get_param: KeyName}
       networks:
         - network: ctlplane
       user_data_format: SOFTWARE_CONFIG
       user_data: {get_resource: UserData}
-      name: {get_param: Hostname}
+      name:
+        str_replace:
+            template: {get_param: Hostname}
+            params: {get_param: HostnameMap}
+      software_config_transport: {get_param: SoftwareConfigTransport}
+      metadata: {get_param: ServerMetadata}
+      scheduler_hints: {get_param: ObjectStorageSchedulerHints}
 
   # Combine the NodeAdminUserData and NodeUserData mime archives
   UserData:
@@ -112,42 +139,89 @@ resources:
   NodeUserData:
     type: OS::TripleO::NodeUserData
 
+  ExternalPort:
+    type: OS::TripleO::SwiftStorage::Ports::ExternalPort
+    properties:
+      ControlPlaneIP: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+      IPPool: {get_param: SwiftStorageIPs}
+      NodeIndex: {get_param: NodeIndex}
+
   InternalApiPort:
     type: OS::TripleO::SwiftStorage::Ports::InternalApiPort
     properties:
       ControlPlaneIP: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+      IPPool: {get_param: SwiftStorageIPs}
+      NodeIndex: {get_param: NodeIndex}
 
   StoragePort:
     type: OS::TripleO::SwiftStorage::Ports::StoragePort
     properties:
       ControlPlaneIP: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+      IPPool: {get_param: SwiftStorageIPs}
+      NodeIndex: {get_param: NodeIndex}
 
   StorageMgmtPort:
     type: OS::TripleO::SwiftStorage::Ports::StorageMgmtPort
     properties:
       ControlPlaneIP: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+      IPPool: {get_param: SwiftStorageIPs}
+      NodeIndex: {get_param: NodeIndex}
+
+  TenantPort:
+    type: OS::TripleO::SwiftStorage::Ports::TenantPort
+    properties:
+      ControlPlaneIP: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+      IPPool: {get_param: SwiftStorageIPs}
+      NodeIndex: {get_param: NodeIndex}
+
+  ManagementPort:
+    type: OS::TripleO::SwiftStorage::Ports::ManagementPort
+    properties:
+      ControlPlaneIP: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+      IPPool: {get_param: SwiftStorageIPs}
+      NodeIndex: {get_param: NodeIndex}
 
   NetworkConfig:
     type: OS::TripleO::ObjectStorage::Net::SoftwareConfig
     properties:
       ControlPlaneIp: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+      ExternalIpSubnet: {get_attr: [ExternalPort, ip_subnet]}
       InternalApiIpSubnet: {get_attr: [InternalApiPort, ip_subnet]}
       StorageIpSubnet: {get_attr: [StoragePort, ip_subnet]}
       StorageMgmtIpSubnet: {get_attr: [StorageMgmtPort, ip_subnet]}
+      TenantIpSubnet: {get_attr: [TenantPort, ip_subnet]}
+      ManagementIpSubnet: {get_attr: [ManagementPort, ip_subnet]}
 
   NetIpMap:
     type: OS::TripleO::Network::Ports::NetIpMap
     properties:
       ControlPlaneIp: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+      ExternalIp: {get_attr: [ExternalPort, ip_address]}
+      ExternalIpSubnet: {get_attr: [ExternalPort, ip_subnet]}
+      ExternalIpUri: {get_attr: [ExternalPort, ip_address_uri]}
       InternalApiIp: {get_attr: [InternalApiPort, ip_address]}
+      InternalApiIpSubnet: {get_attr: [InternalApiPort, ip_subnet]}
+      InternalApiIpUri: {get_attr: [InternalApiPort, ip_address_uri]}
       StorageIp: {get_attr: [StoragePort, ip_address]}
+      StorageIpSubnet: {get_attr: [StoragePort, ip_subnet]}
+      StorageIpUri: {get_attr: [StoragePort, ip_address_uri]}
       StorageMgmtIp: {get_attr: [StorageMgmtPort, ip_address]}
+      StorageMgmtIpSubnet: {get_attr: [StorageMgmtPort, ip_subnet]}
+      StorageMgmtIpUri: {get_attr: [StorageMgmtPort, ip_address_uri]}
+      TenantIp: {get_attr: [TenantPort, ip_address]}
+      TenantIpSubnet: {get_attr: [TenantPort, ip_subnet]}
+      TenantIpUri: {get_attr: [TenantPort, ip_address_uri]}
+      ManagementIp: {get_attr: [ManagementPort, ip_address]}
+      ManagementIpSubnet: {get_attr: [ManagementPort, ip_subnet]}
+      ManagementIpUri: {get_attr: [ManagementPort, ip_address_uri]}
 
   NetworkDeployment:
     type: OS::TripleO::SoftwareDeployment
     properties:
+      name: NetworkDeployment
       config: {get_resource: NetworkConfig}
       server: {get_resource: SwiftStorage}
+      actions: {get_param: NetworkDeploymentActions}
 
   SwiftStorageHieraConfig:
     type: OS::Heat::StructuredConfig
@@ -160,35 +234,31 @@ resources:
             - heat_config_%{::deploy_config_name}
             - object_extraconfig
             - extraconfig
+            - service_names
+            - service_configs
             - object
             - swift_devices_and_proxy # provided by SwiftDevicesAndProxyConfig
+            - bootstrap_node # provided by allNodesConfig
             - all_nodes # provided by allNodesConfig
+            - vip_data # provided by allNodesConfig
             - '"%{::osfamily}"'
-            - common
+          merge_behavior: deeper
           datafiles:
-            common:
-              raw_data: {get_file: hieradata/common.yaml}
+            service_names:
+              mapped_data:
+                service_names: {get_param: ServiceNames}
+                sensu::subscriptions: {get_param: MonitoringSubscriptions}
+            service_configs:
+              mapped_data:
+                map_replace:
+                  - {get_param: ServiceConfigSettings}
+                  - values: {get_attr: [NetIpMap, net_ip_map]}
             object_extraconfig:
               mapped_data: {get_param: ObjectStorageExtraConfig}
             extraconfig:
               mapped_data: {get_param: ExtraConfig}
             object:
-              raw_data: {get_file: hieradata/object.yaml}
               mapped_data: # data supplied directly to this deployment configuration, etc
-                swift::swift_hash_suffix: { get_input: swift_hash_suffix }
-                tripleo::ringbuilder::part_power: { get_input: swift_part_power }
-                tripleo::ringbuilder::replicas: {get_input: swift_replicas }
-                # Swift
-                swift::storage::all::storage_local_net_ip: {get_input: swift_management_network}
-                swift_mount_check: {get_input: swift_mount_check }
-                tripleo::ringbuilder::min_part_hours: { get_input: swift_min_part_hours }
-                ntp::servers: {get_input: ntp_servers}
-                # NOTE(dprince): build_ring support is currently not wired in.
-                # See: https://review.openstack.org/#/c/109225/
-                tripleo::ringbuilder::build_ring: True
-                snmpd_readonly_user_name: {get_input: snmpd_readonly_user_name}
-                snmpd_readonly_user_password: {get_input: snmpd_readonly_user_password}
-                tripleo::packages::enable_install: {get_input: enable_package_install}
                 tripleo::packages::enable_upgrade: {get_input: enable_package_upgrade}
 
 
@@ -196,30 +266,23 @@ resources:
     type: OS::Heat::StructuredDeployment
     depends_on: NetworkDeployment
     properties:
+      name: SwiftStorageHieraDeploy
       server: {get_resource: SwiftStorage}
       config: {get_resource: SwiftStorageHieraConfig}
       input_values:
-        local_ip: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
-        snmpd_readonly_user_name: {get_param: SnmpdReadonlyUserName}
-        snmpd_readonly_user_password: {get_param: SnmpdReadonlyUserPassword}
-        swift_hash_suffix: {get_param: HashSuffix}
-        swift_mount_check: {get_param: MountCheck}
-        swift_min_part_hours: {get_param: MinPartHours}
-        swift_part_power: {get_param: PartPower}
-        swift_replicas: { get_param: Replicas}
-        ntp_servers:
-          str_replace:
-            template: '["server"]'
-            params:
-              server: {get_param: NtpServer}
-        enable_package_install: {get_param: EnablePackageInstall}
         enable_package_upgrade: {get_attr: [UpdateDeployment, update_managed_packages]}
-        swift_management_network: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, SwiftMgmtNetwork]}]}
+
+  # Resource for site-specific injection of root certificate
+  NodeTLSCAData:
+    depends_on: SwiftStorageHieraDeploy
+    type: OS::TripleO::NodeTLSCAData
+    properties:
+      server: {get_resource: SwiftStorage}
 
   # Hook for site-specific additional pre-deployment config,
   # applying to all nodes, e.g node registration/unregistration
   NodeExtraConfig:
-    depends_on: SwiftStorageHieraDeploy
+    depends_on: NodeTLSCAData
     type: OS::TripleO::NodeExtraConfig
     properties:
         server: {get_resource: SwiftStorage}
@@ -237,13 +300,63 @@ resources:
           get_param: UpdateIdentifier
 
 outputs:
+  ip_address:
+    description: IP address of the server in the ctlplane network
+    value: {get_attr: [SwiftStorage, networks, ctlplane, 0]}
+  hostname:
+    description: Hostname of the server
+    value: {get_attr: [SwiftStorage, name]}
   hosts_entry:
     value:
       str_replace:
-        template: "IP HOST.localdomain HOST"
+        template: |
+          PRIMARYIP PRIMARYHOST.DOMAIN PRIMARYHOST
+          EXTERNALIP EXTERNALHOST.DOMAIN EXTERNALHOST
+          INTERNAL_APIIP INTERNAL_APIHOST.DOMAIN INTERNAL_APIHOST
+          STORAGEIP STORAGEHOST.DOMAIN STORAGEHOST
+          STORAGE_MGMTIP STORAGE_MGMTHOST.DOMAIN STORAGE_MGMTHOST
+          TENANTIP TENANTHOST.DOMAIN TENANTHOST
+          MANAGEMENTIP MANAGEMENTHOST.DOMAIN MANAGEMENTHOST
         params:
-          IP: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, ObjectStorageHostnameResolveNetwork]}]}
-          HOST: {get_attr: [SwiftStorage, name]}
+          PRIMARYIP: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, ObjectStorageHostnameResolveNetwork]}]}
+          DOMAIN: {get_param: CloudDomain}
+          PRIMARYHOST: {get_attr: [SwiftStorage, name]}
+          EXTERNALIP: {get_attr: [ExternalPort, ip_address]}
+          EXTERNALHOST:
+            list_join:
+            - '.'
+            - - {get_attr: [SwiftStorage, name]}
+              - external
+          INTERNAL_APIIP: {get_attr: [InternalApiPort, ip_address]}
+          INTERNAL_APIHOST:
+            list_join:
+            - '.'
+            - - {get_attr: [SwiftStorage, name]}
+              - internalapi
+          STORAGEIP: {get_attr: [StoragePort, ip_address]}
+          STORAGEHOST:
+            list_join:
+            - '.'
+            - - {get_attr: [SwiftStorage, name]}
+              - storage
+          STORAGE_MGMTIP: {get_attr: [StorageMgmtPort, ip_address]}
+          STORAGE_MGMTHOST:
+            list_join:
+            - '.'
+            - - {get_attr: [SwiftStorage, name]}
+              - storagemgmt
+          TENANTIP: {get_attr: [TenantPort, ip_address]}
+          TENANTHOST:
+            list_join:
+            - '.'
+            - - {get_attr: [SwiftStorage, name]}
+              - tenant
+          MANAGEMENTIP: {get_attr: [ManagementPort, ip_address]}
+          MANAGEMENTHOST:
+            list_join:
+            - '.'
+            - - {get_attr: [SwiftStorage, name]}
+              - management
   nova_server_resource:
     description: Heat resource handle for the swift storage server
     value:
@@ -252,9 +365,26 @@ outputs:
     description: Swift device formatted for swift-ring-builder
     value:
       str_replace:
-        template: 'r1z1-IP:%PORT%/d1'
+        template:
+          list_join:
+            - ','
+            - ['r1z1-IP:%PORT%/d1']
+            - repeat:
+                template: 'r1z1-IP:%PORT%/DEVICE'
+                for_each:
+                  DEVICE: {get_param: SwiftRawDisks}
         params:
-          IP: {get_attr: [NetIpMap, net_ip_map, {get_param: [ServiceNetMap, SwiftMgmtNetwork]}]}
+          IP:
+            get_attr:
+              - NetIpMap
+              - net_ip_map
+              - str_replace:
+                  template: "NETWORK_uri"
+                  params:
+                    NETWORK: {get_param: [ServiceNetMap, SwiftMgmtNetwork]}
+  external_ip_address:
+    description: IP address of the server in the external network
+    value: {get_attr: [ExternalPort, ip_address]}
   internal_api_ip_address:
     description: IP address of the server in the internal_api network
     value: {get_attr: [InternalApiPort, ip_address]}
@@ -264,10 +394,9 @@ outputs:
   storage_mgmt_ip_address:
     description: IP address of the server in the storage_mgmt network
     value: {get_attr: [StorageMgmtPort, ip_address]}
-  config_identifier:
-    description: identifier which changes if the node configuration may need re-applying
-    value:
-      list_join:
-        - ','
-        - - {get_attr: [SwiftStorageHieraDeploy, deploy_stdout]}
-          - {get_param: UpdateIdentifier}
+  tenant_ip_address:
+    description: IP address of the server in the tenant network
+    value: {get_attr: [TenantPort, ip_address]}
+  management_ip_address:
+    description: IP address of the server in the management network
+    value: {get_attr: [ManagementPort, ip_address]}

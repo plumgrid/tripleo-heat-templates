@@ -6,8 +6,6 @@ parameters:
     type: comma_delimited_list
   object_store_swift_devices:
     type: comma_delimited_list
-  controller_swift_proxy_memcaches:
-    type: comma_delimited_list
 
 resources:
 
@@ -20,7 +18,7 @@ resources:
           datafiles:
             swift_devices_and_proxy:
               mapped_data:
-                tripleo::ringbuilder::devices:
+                tripleo::profile::base::swift::ringbuilder::devices:
                   list_join:
                   - ", "
                   - - list_join:
@@ -29,14 +27,6 @@ resources:
                     - list_join:
                       - ", "
                       - {get_param: object_store_swift_devices}
-                swift::proxy::cache::memcache_servers:
-                  str_replace:
-                    template: "['SERVERS_LIST']"
-                    params:
-                      SERVERS_LIST:
-                        list_join:
-                        - "','"
-                        - {get_param: controller_swift_proxy_memcaches}
 
 outputs:
   config_id:

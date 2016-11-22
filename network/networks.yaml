@@ -18,3 +18,9 @@ resources:
 
   TenantNetwork:
     type: OS::TripleO::Network::Tenant
+
+  ManagementNetwork:
+    type: OS::TripleO::Network::Management
+
+  NetworkExtraConfig:
+    type: OS::TripleO::Network::ExtraConfig

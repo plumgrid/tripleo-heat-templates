@@ -10,36 +10,72 @@ parameters:
     type: boolean
   servers:
     type: json
-  NodeConfigIdentifiers:
-     type: json
+  RoleData:
+    type: json
+    default: {}
+  DeployIdentifier:
+     type: string
+     default: ''
      description: Value which changes if the node configuration may need to be re-applied
 
-
 resources:
+
+  CephStorageArtifactsConfig:
+    type: deploy-artifacts.yaml
+
+  CephStorageArtifactsDeploy:
+    type: OS::Heat::StructuredDeployments
+    properties:
+      servers:  {get_param: servers}
+      config: {get_resource: CephStorageArtifactsConfig}
+      input_values:
+        update_identifier: {get_param: DeployIdentifier}
+
   CephStoragePuppetConfig:
     type: OS::Heat::SoftwareConfig
     properties:
       group: puppet
       options:
         enable_debug: {get_param: ConfigDebug}
+        enable_hiera: True
+        enable_facter: False
+        modulepath: /etc/puppet/modules:/opt/stack/puppet-modules:/usr/share/openstack-puppet/modules
+      inputs:
+      - name: step
       outputs:
       - name: result
       config:
-        get_file: manifests/overcloud_cephstorage.pp
+        list_join:
+        - ''
+        - - get_file: manifests/overcloud_cephstorage.pp
+          - {get_param: [RoleData, step_config]}
 
-  CephStorageDeployment_Step1:
+  CephStorageDeployment_Step2:
     type: OS::Heat::StructuredDeployments
+    depends_on: CephStorageArtifactsDeploy
     properties:
+      name: CephStorageDeployment_Step2
       servers:  {get_param: servers}
       config: {get_resource: CephStoragePuppetConfig}
       input_values:
-        update_identifier: {get_param: NodeConfigIdentifiers}
+        step: 2
+        update_identifier: {get_param: DeployIdentifier}
+
+  CephStorageDeployment_Step3:
+    type: OS::Heat::StructuredDeployments
+    depends_on: CephStorageDeployment_Step2
+    properties:
+      name: CephStorageDeployment_Step3
+      servers:  {get_param: servers}
+      config: {get_resource: CephStoragePuppetConfig}
+      input_values:
+        step: 3
+        update_identifier: {get_param: DeployIdentifier}
 
   # Note, this should come last, so use depends_on to ensure
   # this is created after any other resources.
   ExtraConfig:
-    depends_on: CephStorageDeployment_Step1
+    depends_on: CephStorageDeployment_Step3
     type: OS::TripleO::NodeExtraConfigPost
     properties:
         servers: {get_param: servers}
-

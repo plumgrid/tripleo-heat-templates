@@ -1,0 +1,55 @@
+heat_template_version: 2016-04-08
+
+description: >
+  OpenStack Ceilometer Central Agent service configured with Puppet
+
+parameters:
+  ServiceNetMap:
+    default: {}
+    description: Mapping of service_name -> network name. Typically set
+                 via parameter_defaults in the resource registry.  This
+                 mapping overrides those in ServiceNetMapDefaults.
+    type: json
+  DefaultPasswords:
+    default: {}
+    type: json
+  EndpointMap:
+    default: {}
+    description: Mapping of service endpoint -> protocol. Typically set
+                 via parameter_defaults in the resource registry.
+    type: json
+  RedisPassword:
+    description: The password for the redis service account.
+    type: string
+    hidden: true
+  MonitoringSubscriptionCeilometerCentral:
+    default: 'overcloud-ceilometer-agent-central'
+    type: string
+
+resources:
+  CeilometerServiceBase:
+    type: ./ceilometer-base.yaml
+    properties:
+      ServiceNetMap: {get_param: ServiceNetMap}
+      DefaultPasswords: {get_param: DefaultPasswords}
+      EndpointMap: {get_param: EndpointMap}
+
+outputs:
+  role_data:
+    description: Role data for the Ceilometer Central Agent role.
+    value:
+      service_name: ceilometer_agent_central
+      monitoring_subscription: {get_param: MonitoringSubscriptionCeilometerCentral}
+      config_settings:
+        map_merge:
+          - get_attr: [CeilometerServiceBase, role_data, config_settings]
+          - ceilometer::agent::central::coordination_url:
+              list_join:
+                - ''
+                - - 'redis://:'
+                  - {get_param: RedisPassword}
+                  - '@'
+                  - "%{hiera('redis_vip')}"
+                  - ':6379/'
+      step_config: |
+        include ::tripleo::profile::base::ceilometer::agent::central

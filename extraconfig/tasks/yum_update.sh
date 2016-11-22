@@ -22,7 +22,9 @@ mkdir -p $timestamp_dir
 update_identifier=${update_identifier//[^a-zA-Z0-9-_]/}
 
 # seconds to wait for this node to rejoin the cluster after update
-cluster_start_timeout=360
+cluster_start_timeout=600
+galera_sync_timeout=1800
+cluster_settle_timeout=1800
 
 timestamp_file="$timestamp_dir/$update_identifier"
 if [[ -a "$timestamp_file" ]]; then
@@ -52,15 +54,15 @@ if [[ "$pacemaker_status" == "active" ]] ; then
         pcs cluster stop
     fi
 else
-    echo "Excluding upgrading packages that are handled by config management tooling"
-    command_arguments="$command_arguments --skip-broken"
-    for exclude in $(cat /var/lib/tripleo/installed-packages/* | sort -u); do
-        command_arguments="$command_arguments --exclude $exclude"
-    done
+    echo "Upgrading openstack-puppet-modules"
+    yum -q -y update openstack-puppet-modules
+    echo "Upgrading other packages is handled by config management tooling"
+    echo -n "true" > $heat_outputs_path.update_managed_packages
+    exit 0
 fi
 
 command=${command:-update}
-full_command="yum -y $command $command_arguments"
+full_command="yum -q -y $command $command_arguments"
 echo "Running: $full_command"
 
 result=$($full_command)
@@ -83,10 +85,24 @@ if [[ "$pacemaker_status" == "active" ]] ; then
             exit 1
         fi
     done
-    pcs status
 
-else
-    echo -n "true" > $heat_outputs_path.update_managed_packages
+    tstart=$(date +%s)
+    while ! clustercheck; do
+        sleep 5
+        tnow=$(date +%s)
+        if (( tnow-tstart > galera_sync_timeout )) ; then
+            echo "ERROR galera sync timed out"
+            exit 1
+        fi
+    done
+
+    echo "Waiting for pacemaker cluster to settle"
+    if ! timeout -k 10 $cluster_settle_timeout crm_resource --wait; then
+        echo "ERROR timed out while waiting for the cluster to settle"
+        exit 1
+    fi
+
+    pcs status
 fi
 
 echo "Finished yum_update.sh on server $deploy_server_id at `date`"

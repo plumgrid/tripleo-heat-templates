@@ -1,7 +1,12 @@
 ## A Heat environment file which can be used to set up storage
 ## backends. Defaults to Ceph used as a backend for Cinder, Glance and
 ## Nova ephemeral storage.
-parameters:
+resource_registry:
+  OS::TripleO::Services::CephMon: ../puppet/services/ceph-mon.yaml
+  OS::TripleO::Services::CephOSD: ../puppet/services/ceph-osd.yaml
+  OS::TripleO::Services::CephClient: ../puppet/services/ceph-client.yaml
+
+parameter_defaults:
 
   #### BACKEND SELECTION ####
 
@@ -9,12 +14,16 @@ parameters:
   CinderEnableIscsiBackend: false
   ## Whether to enable rbd (Ceph) backend for Cinder.
   CinderEnableRbdBackend: true
+  ## Cinder Backup backend can be either 'ceph' or 'swift'.
+  CinderBackupBackend: ceph
   ## Whether to enable NFS backend for Cinder.
   # CinderEnableNfsBackend: false
   ## Whether to enable rbd (Ceph) backend for Nova ephemeral storage.
   NovaEnableRbdBackend: true
   ## Glance backend can be either 'rbd' (Ceph), 'swift' or 'file'.
   GlanceBackend: rbd
+  ## Gnocchi backend can be either 'rbd' (Ceph), 'swift' or 'file'.
+  GnocchiBackend: rbd
 
 
   #### CINDER NFS SETTINGS ####
@@ -32,6 +41,8 @@ parameters:
   ## File system type of the mount
   # GlanceFilePcmkFstype: nfs
   ## Pacemaker mount point, e.g. '192.168.122.1:/export/glance' for NFS
+  ##  (If using IPv6, use both double- and single-quotes,
+  ##  e.g. "'[fdd0::1]:/export/glance'")
   # GlanceFilePcmkDevice: ''
   ## Options for the mount managed by Pacemaker
   # GlanceFilePcmkOptions: ''
@@ -39,13 +50,10 @@ parameters:
 
   #### CEPH SETTINGS ####
 
-  ## Whether to deploy Ceph OSDs on the controller nodes. By default
-  ## OSDs are deployed on dedicated ceph-storage nodes only.
-  # ControllerEnableCephStorage: false
-
-  ## When deploying Ceph through the oscplugin CLI, the following
+  ## When deploying Ceph Nodes through the oscplugin CLI, the following
   ## parameters are set automatically by the CLI. When deploying via
-  ## heat stack-create, they need to be provided manually.
+  ## heat stack-create or ceph on the controller nodes only,
+  ## they need to be provided manually.
 
   ## Number of Ceph storage nodes to deploy
   # CephStorageCount: 0
@@ -55,3 +63,5 @@ parameters:
   # CephMonKey: ''
   ## Ceph admin key, e.g. 'AQDLOh1VgEp6FRAAFzT7Zw+Y9V6JJExQAsRnRQ=='
   # CephAdminKey: ''
+  ## Ceph client key, e.g 'AQC+vYNXgDAgAhAAc8UoYt+OTz5uhV7ItLdwUw=='
+  # CephClientKey: ''

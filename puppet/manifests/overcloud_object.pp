@@ -13,40 +13,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
-include tripleo::packages
-
-create_resources(sysctl::value, hiera('sysctl_settings'), {})
-
-if count(hiera('ntp::servers')) > 0 {
-  include ::ntp
+if hiera('step') >= 4 {
+  hiera_include('object_classes', [])
 }
 
-include ::swift
-class {'swift::storage::all':
-  mount_check => str2bool(hiera('swift_mount_check'))
-}
-if(!defined(File['/srv/node'])) {
-  file { '/srv/node':
-    ensure  => directory,
-    owner   => 'swift',
-    group   => 'swift',
-    require => Package['openstack-swift'],
-  }
-}
-
-$swift_components = ['account', 'container', 'object']
-swift::storage::filter::recon { $swift_components : }
-swift::storage::filter::healthcheck { $swift_components : }
-
-$snmpd_user = hiera('snmpd_readonly_user_name')
-snmp::snmpv3_user { $snmpd_user:
-  authtype => 'MD5',
-  authpass => hiera('snmpd_readonly_user_password'),
-}
-class { 'snmp':
-  agentaddress => ['udp:161','udp6:[::1]:161'],
-  snmpd_config => [ join(['rouser ', hiera('snmpd_readonly_user_name')]), 'proc  cron', 'includeAllDisks  10%', 'master agentx', 'trapsink localhost public', 'iquerySecName internalUser', 'rouser internalUser', 'defaultMonitors yes', 'linkUpDownNotifications yes' ],
-}
-
-hiera_include('object_classes')
-package_manifest{'/var/lib/tripleo/installed-packages/overcloud_object': ensure => present}
+$package_manifest_name = join(['/var/lib/tripleo/installed-packages/overcloud_object', hiera('step')])
+package_manifest{$package_manifest_name: ensure => present}
